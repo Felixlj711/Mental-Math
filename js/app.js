@@ -7,7 +7,7 @@ import { parseAnswer, checkAnswer, displayAnswer, fmtValue, withCommas } from '.
 import * as stats from './stats.js';
 import { lineChart } from './chart.js';
 
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
 
 const DEFAULTS = {
   tolerance: 2, // 0 = exact, 2 = ±2%, 5 = ±5%
@@ -34,10 +34,18 @@ const ALLOWED = {
   notes: [true, false],
 };
 
+const MODE_HELP = {
+  mixed: 'All four modes, shuffled.',
+  mult: 'e.g. 47 × 36 · 4,500 × 30 · 2.5M × 4,000',
+  pct: 'e.g. 18% of 2.4M · % change · reverse %',
+  growth: 'e.g. 8% for 3 years · CAGR · rule of 72',
+  div: 'e.g. 4.2M ÷ 350 · how many times · payback',
+};
+
 const DIFF_HELP = {
   1: 'Warm-up: round numbers, friendly percentages.',
-  2: 'Typical case-interview maths. Jot values in Notes, like paper in an interview.',
-  3: 'Harder than most interviews: messy numbers, for speed training.',
+  2: 'Interview level. Jot values in Notes.',
+  3: 'Harder than interviews, for speed training.',
 };
 
 const GOAL_PRESETS = { problems: [50, 100, 150, 250, 500], sessions: [3, 5, 7, 10, 14] };
@@ -177,13 +185,11 @@ window.addEventListener('popstate', (e) => {
 function bindStatic() {
   for (const t of $$('.tab')) t.addEventListener('click', () => showView(t.dataset.view));
 
-  for (const b of $$('#mode-grid .mode-btn')) {
-    b.addEventListener('click', () => {
-      state.settings.mode = b.dataset.mode;
-      saveSettings();
-      renderHome();
-    });
-  }
+  bindChoice('#mode-seg', (v) => {
+    state.settings.mode = v;
+    saveSettings();
+    renderHome();
+  });
   bindChoice('#difficulty-seg', (v) => {
     state.settings.difficulty = Number(v);
     saveSettings();
@@ -240,33 +246,29 @@ function renderHome() {
   const s = state.settings;
   const st = stats.streaks(state.attempts);
   $('#home-streak-count').textContent = st.current;
-  $('#home-streak-note').textContent = st.practicedToday
-    ? 'Practised today ✓'
-    : st.current
-      ? `Practise today to keep your ${st.current}-day streak`
-      : 'Start a streak today';
+  $('#home-streak').title = st.practicedToday ? `${st.current}-day streak, practised today` : `${st.current}-day streak`;
   const goal = stats.goalProgress({ type: s.goalType, target: s.goalTarget }, state.attempts);
   $('#home-goal-text').textContent = `${goal.done} / ${goal.target} ${goal.unit}`;
   $('#home-goal-bar').style.width = `${goal.fraction * 100}%`;
   $('#home-goal-bar').parentElement.classList.toggle('done', goal.fraction >= 1);
-  $('#home-goal-label').textContent = goal.fraction >= 1 ? 'Weekly goal reached 🎉' : 'Weekly goal';
+  $('#home-goal-label').textContent = goal.fraction >= 1 ? 'Weekly goal reached ✓' : 'Weekly goal';
 
   const mistakes = stats.mistakeTypes(state.attempts);
-  const reviewBtn = $('#mode-grid [data-mode="review"]');
-  reviewBtn.disabled = mistakes.length === 0;
-  $('#review-sub').textContent = mistakes.length
-    ? `${mistakes.length} problem type${mistakes.length > 1 ? 's' : ''} you miss most, with new numbers`
-    : 'Unlocks once you get some wrong';
+  $('#mode-seg [data-value="review"]').disabled = mistakes.length === 0;
   if (s.mode === 'review' && !mistakes.length) s.mode = 'mixed';
-
-  for (const b of $$('#mode-grid .mode-btn')) b.setAttribute('aria-checked', String(b.dataset.mode === s.mode));
+  markChoice('#mode-seg', s.mode);
+  $('#mode-help').textContent =
+    s.mode === 'review'
+      ? `Your ${mistakes.length} most-missed problem type${mistakes.length > 1 ? 's' : ''}, new numbers.`
+      : MODE_HELP[s.mode];
   markChoice('#difficulty-seg', s.difficulty);
   $('#difficulty-help').textContent = s.mode === 'review' ? 'Review uses the level of each problem you missed.' : DIFF_HELP[s.difficulty];
   markChoice('#session-seg', `${s.sessionType}:${s.sessionValue}`);
+  $('#session-help').textContent =
+    s.sessionType === 'count' ? `${s.sessionValue} problems.` : `Timed: as many as you can in ${s.sessionValue} minutes.`;
   // review mode uses the difficulty of each missed problem type
   $('#difficulty-seg').style.opacity = s.mode === 'review' ? '0.5' : '';
-  const len = s.sessionType === 'count' ? `${s.sessionValue} problems` : `${s.sessionValue} min`;
-  $('#start-btn').textContent = `Start · ${MODE_NAMES[s.mode]} · ${len}`;
+  $('#start-btn').textContent = 'Start';
 }
 
 // ---------- Sessions ----------

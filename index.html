@@ -28,7 +28,7 @@
     <section id="view-home" class="view" aria-labelledby="home-title">
       <header class="page-head">
         <h1 id="home-title">Mental Math</h1>
-        <div class="streak-pill" title="Daily streak">
+        <div class="streak-pill" id="home-streak" title="Daily streak">
           <span aria-hidden="true">🔥</span>
           <span id="home-streak-count">0</span>
           <span class="sr-only">day streak</span>
@@ -37,22 +37,22 @@
 
       <div class="card goal-card">
         <div class="goal-row">
-          <span class="muted" id="home-streak-note">Start a streak today</span>
+          <span class="muted" id="home-goal-label">Weekly goal</span>
           <span class="goal-text" id="home-goal-text">0 / 150</span>
         </div>
         <div class="progress" aria-hidden="true"><span id="home-goal-bar"></span></div>
-        <div class="muted small" id="home-goal-label">Weekly goal</div>
       </div>
 
-      <h2 class="section-label">Mode</h2>
-      <div class="mode-grid" id="mode-grid" role="radiogroup" aria-label="Mode">
-        <button type="button" class="mode-btn" role="radio" data-mode="mult"><span class="mode-icon" aria-hidden="true">×</span><span>Multiplication</span></button>
-        <button type="button" class="mode-btn" role="radio" data-mode="pct"><span class="mode-icon" aria-hidden="true">%</span><span>Percentages</span></button>
-        <button type="button" class="mode-btn" role="radio" data-mode="growth"><span class="mode-icon" aria-hidden="true">↗</span><span>Growth rates</span></button>
-        <button type="button" class="mode-btn" role="radio" data-mode="div"><span class="mode-icon" aria-hidden="true">÷</span><span>Division</span></button>
-        <button type="button" class="mode-btn wide" role="radio" data-mode="mixed"><span class="mode-icon" aria-hidden="true">Σ</span><span>Mixed<small>All modes, shuffled</small></span></button>
-        <button type="button" class="mode-btn wide" role="radio" data-mode="review"><span class="mode-icon" aria-hidden="true">↺</span><span>Review mistakes<small id="review-sub">No mistakes yet</small></span></button>
+      <h2 class="section-label" id="mode-label">Mode</h2>
+      <div class="segmented stacked-seg" id="mode-seg" role="radiogroup" aria-labelledby="mode-label">
+        <button type="button" role="radio" data-value="mixed"><span class="seg-icon" aria-hidden="true">Σ</span>Mixed</button>
+        <button type="button" role="radio" data-value="mult"><span class="seg-icon" aria-hidden="true">×</span>Multiply</button>
+        <button type="button" role="radio" data-value="pct"><span class="seg-icon" aria-hidden="true">%</span>Percent</button>
+        <button type="button" role="radio" data-value="growth"><span class="seg-icon" aria-hidden="true">↗</span>Growth</button>
+        <button type="button" role="radio" data-value="div"><span class="seg-icon" aria-hidden="true">÷</span>Divide</button>
+        <button type="button" role="radio" data-value="review"><span class="seg-icon" aria-hidden="true">↺</span>Review</button>
       </div>
+      <p class="setting-help" id="mode-help"></p>
 
       <h2 class="section-label" id="diff-label">Difficulty</h2>
       <div class="segmented" id="difficulty-seg" role="radiogroup" aria-labelledby="diff-label">
@@ -63,16 +63,15 @@
       <p class="setting-help" id="difficulty-help"></p>
 
       <h2 class="section-label" id="session-label">Session</h2>
-      <div class="session-grid" id="session-seg" role="radiogroup" aria-labelledby="session-label">
-        <span class="session-row-label">Problems</span>
-        <button type="button" role="radio" data-value="count:10">10</button>
-        <button type="button" role="radio" data-value="count:20">20</button>
-        <button type="button" role="radio" data-value="count:50">50</button>
-        <span class="session-row-label">Minutes</span>
-        <button type="button" role="radio" data-value="time:2">2</button>
-        <button type="button" role="radio" data-value="time:5">5</button>
-        <button type="button" role="radio" data-value="time:10">10</button>
+      <div class="segmented session-seg" id="session-seg" role="radiogroup" aria-labelledby="session-label">
+        <button type="button" role="radio" data-value="count:10" aria-label="10 problems">10</button>
+        <button type="button" role="radio" data-value="count:20" aria-label="20 problems">20</button>
+        <button type="button" role="radio" data-value="count:50" aria-label="50 problems">50</button>
+        <button type="button" role="radio" data-value="time:2" aria-label="2 minutes" class="group-start">2m</button>
+        <button type="button" role="radio" data-value="time:5" aria-label="5 minutes">5m</button>
+        <button type="button" role="radio" data-value="time:10" aria-label="10 minutes">10m</button>
       </div>
+      <p class="setting-help" id="session-help"></p>
 
       <button type="button" class="btn primary big" id="start-btn">Start</button>
     </section>

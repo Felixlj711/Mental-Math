@@ -156,7 +156,7 @@ h2 {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-2);
-  margin: 22px 0 8px;
+  margin: 18px 0 8px;
 }
 
 .card {
@@ -293,8 +293,7 @@ h2 {
   border-radius: 14px;
 }
 
-.segmented button,
-.session-grid button {
+.segmented button {
   min-height: 44px;
   border: 0;
   border-radius: 10px;
@@ -304,29 +303,12 @@ h2 {
   cursor: pointer;
 }
 
-.segmented button[aria-checked='true'],
-.session-grid button[aria-checked='true'] {
+.segmented button[aria-checked='true'] {
   background: var(--surface);
   color: var(--text);
   box-shadow: var(--shadow);
   outline: 2px solid var(--accent);
   outline-offset: -2px;
-}
-
-.session-grid {
-  display: grid;
-  grid-template-columns: auto repeat(3, minmax(0, 1fr));
-  gap: 4px;
-  align-items: center;
-  padding: 4px;
-  background: var(--surface-2);
-  border-radius: 14px;
-}
-
-.session-row-label {
-  font-size: 0.85rem;
-  color: var(--text-2);
-  padding: 0 10px 0 8px;
 }
 
 /* ---------- Practice screen ---------- */
@@ -343,7 +325,7 @@ h2 {
 }
 
 .goal-card {
-  padding: 14px 16px;
+  padding: 12px 16px;
 }
 
 .goal-row {
@@ -360,71 +342,43 @@ h2 {
   white-space: nowrap;
 }
 
-.goal-card .small {
-  margin-top: 6px;
-}
-
-.mode-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.mode-btn {
+/* mode toggle: symbol above a short label */
+.stacked-seg button {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
-  min-height: 64px;
-  padding: 10px 14px;
-  border-radius: 14px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  text-align: left;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: var(--shadow);
-  min-width: 0;
-  overflow-wrap: anywhere;
+  justify-content: center;
+  gap: 1px;
+  min-height: 52px;
+  padding: 4px 0;
+  font-size: 0.68rem;
+  line-height: 1.2;
 }
 
-.mode-btn.wide {
-  grid-column: 1 / -1;
+.stacked-seg .seg-icon {
+  font-size: 1.1rem;
+  line-height: 1.2;
 }
 
-.mode-btn small {
-  display: block;
-  font-weight: 400;
-  font-size: 0.82rem;
-  color: var(--text-2);
+/* small gap between "problems" and "minutes" options */
+.session-seg .group-start {
+  margin-left: 6px;
 }
 
-.mode-btn[aria-checked='true'] {
-  border-color: var(--accent);
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-  background: var(--accent-soft);
-}
-
-.mode-btn:disabled {
-  opacity: 0.5;
+.segmented button:disabled {
+  opacity: 0.4;
   cursor: default;
 }
 
-.mode-icon {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: var(--surface-2);
-  font-size: 1.25rem;
-  font-weight: 700;
-  flex: none;
+#mode-help,
+#difficulty-help,
+#session-help {
+  min-height: 1.3em;
+  margin: 6px 4px 0;
 }
 
-.mode-btn[aria-checked='true'] .mode-icon {
-  background: var(--accent);
-  color: var(--accent-ink);
+#view-home .btn.big {
+  margin-top: 18px;
 }
 
 /* ---------- Drill screen ---------- */
@@ -1181,6 +1135,14 @@ details.table-view td:first-child {
 }
 
 @media (max-height: 720px) {
+  #view-home .section-label {
+    margin: 12px 0 6px;
+  }
+
+  #view-home .page-head {
+    padding-bottom: 10px;
+  }
+
   .keypad button,
   .drill-actions .btn {
     min-height: 50px;
