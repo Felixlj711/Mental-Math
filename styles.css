@@ -469,11 +469,11 @@ body[data-view='drill'] .app {
 
 .problem {
   flex: 1;
-  padding: 20px 2px 12px;
+  padding: 16px 2px 12px;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .problem-text {
@@ -486,6 +486,84 @@ body[data-view='drill'] .app {
 
 .problem-text.long {
   font-size: clamp(1.1rem, 4.6vw, 1.35rem);
+}
+
+.notes {
+  position: relative;
+  margin-bottom: 8px;
+}
+
+.notes-field {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  min-height: 52px;
+  padding: 12px 44px 12px 14px;
+  border-radius: 14px;
+  border: 2px dashed var(--border);
+  background: var(--surface);
+  text-align: left;
+  cursor: pointer;
+}
+
+.notes-label {
+  flex: none;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-2);
+}
+
+.notes-text {
+  font-size: 1.25rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.notes-text:empty::before {
+  content: 'tap to jot values, e.g. 240K + 19K';
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: var(--text-2);
+}
+
+.notes-clear {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--surface-2);
+  cursor: pointer;
+}
+
+/* the field the keypad is typing into */
+.notes.active .notes-field,
+.answer-box.active {
+  border-color: var(--accent);
+  border-style: solid;
+}
+
+.notes.active .notes-text::after,
+.answer-box.active #answer-text::after {
+  content: '';
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: -0.12em;
+  background: var(--accent);
+  animation: blink 1s steps(1) infinite;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
 }
 
 .answer-wrap {
@@ -562,6 +640,30 @@ body[data-view='drill'] .app {
   cursor: pointer;
   box-shadow: var(--shadow);
   user-select: none;
+}
+
+.keypad.with-notes {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.keypad:not(.with-notes) .note-key {
+  display: none;
+}
+
+.keypad button.fn.target-key {
+  font-size: 0.74rem;
+  padding: 0;
+  white-space: nowrap;
+}
+
+.notes.active .notes-field:focus-visible {
+  outline: none;
+}
+
+.keypad button.fn.target-key[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
 }
 
 .keypad button.fn {
@@ -1078,10 +1180,18 @@ details.table-view td:first-child {
   }
 }
 
-@media (max-height: 640px) {
+@media (max-height: 720px) {
   .keypad button,
   .drill-actions .btn {
     min-height: 50px;
+  }
+
+  .keypad {
+    gap: 6px;
+  }
+
+  .problem {
+    padding: 8px 2px;
   }
 
   .problem {

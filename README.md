@@ -6,6 +6,8 @@ A mental-math trainer for consulting interviews. It installs on your phone like 
 - **Never repeats**: every problem is generated from random numbers (no question bank). Anything you've seen in your last 10,000 problems is blocked. The same problem type never comes twice in a row, and the wording and business stories rotate.
 - **Realistic numbers**: business-style figures (€2.4M, 36B, 1,250 stores) and consulting stories in € and £. Each story only appears when its numbers make sense.
 - **Answer tolerance**: exact, ±2% or ±5%. After every problem you see the answer and a one-line shortcut.
+- **Notes field**: a line above the answer where you jot working values with the keypad (`240K + 19K`), like paper in an interview. Tap it (or the **Notes** key) to type there, and tap the answer box (or **Answer**) to switch back. It never calculates. You can turn it off in Settings.
+- **Difficulty**: *Easy* is a warm-up with round numbers. *Medium* is typical case-interview maths, where you'd normally have paper. *Hard* is harder than most interviews, for speed training.
 - **Progress**: this week vs last week, 8-week charts, your weakest mode, a daily streak, a calendar, a weekly goal and "Review my mistakes".
 - **Backup**: export and import your full history as a file.
 

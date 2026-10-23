@@ -557,7 +557,7 @@ export const TEMPLATES = [
         p = r.pick([5, 10, 15, 20, 25, 30, 40, 50, 60, 75, 80, 90]);
         B = biz(r, r.int(1, 2), 3, 9);
       } else if (L === 2) {
-        p = r.chance(0.7) ? intNoZero(r, 11, 95) : r.int(3, 19) * 5;
+        p = r.chance(0.6) ? r.int(1, 19) * 5 : r.int(2, 19);
         B = biz(r, 2, 3, 9);
       } else {
         p = r.chance(0.5)
@@ -615,7 +615,7 @@ export const TEMPLATES = [
           () => {
             const c = L === 1
               ? r.pick([5, 10, 20, 25, 40, 50, 100, -5, -10, -20, -25, -40, -50])
-              : (r.chance(0.65) ? 1 : -1) * r.int(3, 60);
+              : (r.chance(0.65) ? 1 : -1) * (r.chance(0.6) ? 5 * r.int(1, 12) : r.int(2, 15));
             const x = biz(r, L === 1 ? r.int(1, 2) : 2, 2, 9);
             return [x, clean(x * (1 + c / 100))];
           },
@@ -649,7 +649,7 @@ export const TEMPLATES = [
       if (L < 3) {
         [c, O, V] = until(
           () => {
-            const cc = L === 1 ? r.pick([10, 20, 25, 50, -10, -20, -25, -50]) : (r.chance(0.6) ? 1 : -1) * r.int(5, 40);
+            const cc = L === 1 ? r.pick([10, 20, 25, 50, -10, -20, -25, -50]) : (r.chance(0.6) ? 1 : -1) * 5 * r.int(1, 8);
             const o = biz(r, L === 1 ? r.int(1, 2) : 2, 2, 9);
             return [cc, o, clean(o * (1 + cc / 100))];
           },
@@ -722,7 +722,7 @@ export const TEMPLATES = [
             n = r.int(2, 5);
             g = r.int(3, 20);
             S = biz(r, 2, 3, 9);
-            E = roundSig(S * (1 + g / 100) ** n, r.int(2, 3));
+            E = roundSig(S * (1 + g / 100) ** n, 2);
           } else {
             n = r.int(3, 10);
             g = r.int(2, 25) + (r.chance(0.3) ? 0.5 : 0);
@@ -740,7 +740,7 @@ export const TEMPLATES = [
         key: `${S}>${E}|${n}`, params: { S, E, n }, shown: [S, E],
         answer: ans, kind: 'percent', exact: false,
         sig: L === 1 ? 3 : 2,
-        minTol: [0.01, 0.03, 0.05][L - 1],
+        minTol: [0.01, 0.06, 0.06][L - 1],
         explain: `${C(E)} ÷ ${C(S)} ≈ ${fixed(ratio, 2)}×; test ${clean(1 + guess / 100)}${sup(n)} ≈ ${fixed((1 + guess / 100) ** n, 2)} → CAGR ≈ ${fmtPct(roundSig(ans, 2))}`,
         plain: [
           `CAGR from ${C(S)} to ${C(E)} over ${n} years?`,
@@ -820,7 +820,7 @@ export const TEMPLATES = [
       const count = L === 3 ? 3 : 2;
       const pickChange = () => {
         if (L === 1) return r.pick([5, 10, 20, 25, 50, -10, -20, -50]);
-        if (L === 2) return (r.chance(0.65) ? 1 : -1) * r.int(2, 30);
+        if (L === 2) return (r.chance(0.65) ? 1 : -1) * (r.chance(0.6) ? 5 * r.int(1, 6) : r.int(2, 15));
         return (r.chance(0.65) ? 1 : -1) * 5 * r.int(1, 6);
       };
       // reject combinations that cancel out exactly (e.g. +25% then −20%)

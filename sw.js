@@ -3,7 +3,7 @@
 // IMPORTANT: whenever you change any file, bump VERSION below. That is how
 // phones notice there is an update (they then show an "Update" button).
 
-const VERSION = 'v1.0.0';
+const VERSION = 'v1.1.0';
 const CACHE = `mental-math-${VERSION}`;
 
 const FILES = [

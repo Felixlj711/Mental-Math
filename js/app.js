@@ -7,7 +7,7 @@ import { parseAnswer, checkAnswer, displayAnswer, fmtValue, withCommas } from '.
 import * as stats from './stats.js';
 import { lineChart } from './chart.js';
 
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.1.0';
 
 const DEFAULTS = {
   tolerance: 2, // 0 = exact, 2 = ±2%, 5 = ±5%
@@ -19,6 +19,7 @@ const DEFAULTS = {
   sessionType: 'count',
   sessionValue: 20,
   mode: 'mixed',
+  notes: true, // notes field above the answer
   lastExport: null,
 };
 
@@ -30,6 +31,13 @@ const ALLOWED = {
   difficulty: [1, 2, 3],
   sessionType: ['count', 'time'],
   mode: ['mult', 'pct', 'growth', 'div', 'mixed', 'review'],
+  notes: [true, false],
+};
+
+const DIFF_HELP = {
+  1: 'Warm-up: round numbers, friendly percentages.',
+  2: 'Typical case-interview maths. Jot values in Notes, like paper in an interview.',
+  3: 'Harder than most interviews: messy numbers, for speed training.',
 };
 
 const GOAL_PRESETS = { problems: [50, 100, 150, 250, 500], sessions: [3, 5, 7, 10, 14] };
@@ -196,6 +204,14 @@ function bindStatic() {
   $('#skip-btn').addEventListener('click', () => submit(true));
   $('#next-btn').addEventListener('click', nextProblem);
   $('#drill-exit').addEventListener('click', exitDrill);
+  $('#notes-field').addEventListener('click', () => setTarget('notes'));
+  $('#answer-box').addEventListener('click', () => setTarget('answer'));
+  $('#notes-clear').addEventListener('click', () => {
+    if (!state.current || state.current.answered) return;
+    state.current.notes = '';
+    renderNotes();
+    setTarget('notes');
+  });
   document.addEventListener('keydown', onKey);
 
   // summary
@@ -245,6 +261,7 @@ function renderHome() {
 
   for (const b of $$('#mode-grid .mode-btn')) b.setAttribute('aria-checked', String(b.dataset.mode === s.mode));
   markChoice('#difficulty-seg', s.difficulty);
+  $('#difficulty-help').textContent = s.mode === 'review' ? 'Review uses the level of each problem you missed.' : DIFF_HELP[s.difficulty];
   markChoice('#session-seg', `${s.sessionType}:${s.sessionValue}`);
   // review mode uses the difficulty of each missed problem type
   $('#difficulty-seg').style.opacity = s.mode === 'review' ? '0.5' : '';
@@ -280,6 +297,8 @@ function startSession(mode, poolOverride = null) {
     timer: null,
   };
   $('#update-banner').hidden = true;
+  $('#notes').hidden = !s.notes;
+  $('#keypad').classList.toggle('with-notes', s.notes);
   showView('drill');
   if (state.session.endsAt) state.session.timer = setInterval(tick, 250);
   nextProblem();
@@ -305,7 +324,8 @@ function nextProblem() {
     return;
   }
   const problem = state.engine.next(ses.spec);
-  state.current = { problem, input: '', shownAt: performance.now(), answered: false };
+  // target: which field the keypad types into ('answer' or 'notes')
+  state.current = { problem, input: '', notes: '', target: 'answer', shownAt: performance.now(), answered: false };
   renderProblem();
 }
 
@@ -362,8 +382,6 @@ function renderProblem() {
   text.classList.toggle('long', p.prompt.length > 110);
   $('#p-hint').textContent = p.hint;
   $('#answer-unit').textContent = UNIT_SUFFIX[p.kind] || '';
-  for (const k of $$('#keypad [data-key="K"], #keypad [data-key="M"], #keypad [data-key="B"]')) k.disabled = p.kind !== 'number';
-  $('#keypad [data-key="neg"]').disabled = !p.signed;
   $('#answer-box').className = 'answer-box';
   $('#feedback').hidden = true;
   $('#keypad').hidden = false;
@@ -371,7 +389,76 @@ function renderProblem() {
   $('#next-actions').hidden = true;
   $('#p-hint').hidden = false;
   renderAnswer();
+  renderNotes();
+  renderTarget();
   renderDrillTop();
+}
+
+// ---------- Notes field ----------
+// A place to jot working values ("240K + 19K") with the keypad. It never
+// calculates anything, so the maths stays in your head.
+
+function setTarget(target) {
+  const cur = state.current;
+  if (!cur || cur.answered || (target === 'notes' && !state.settings.notes)) return;
+  cur.target = target;
+  renderTarget();
+}
+
+function renderTarget() {
+  const cur = state.current;
+  if (!cur) return;
+  const open = !cur.answered;
+  const inNotes = open && state.settings.notes && cur.target === 'notes';
+  $('#notes').classList.toggle('active', inNotes);
+  $('#answer-box').classList.toggle('active', open && !inNotes);
+  const key = $('#target-key');
+  key.textContent = inNotes ? 'Answer' : 'Notes';
+  key.setAttribute('aria-pressed', String(inNotes));
+  key.setAttribute('aria-label', inNotes ? 'Switch to typing the answer' : 'Switch to typing notes');
+  for (const k of $$('#keypad [data-key="+"], #keypad [data-key="-"], #keypad [data-key=" "]')) k.disabled = !inNotes;
+  for (const k of $$('#keypad [data-key="K"], #keypad [data-key="M"], #keypad [data-key="B"]')) k.disabled = !inNotes && cur.problem.kind !== 'number';
+  $('#keypad [data-key="neg"]').disabled = inNotes || !cur.problem.signed;
+  $('#notes-clear').hidden = !open || cur.notes === '';
+}
+
+function formatNotes(s) {
+  return s
+    .split(/([+\-\s])/)
+    .map((t) => (t === '+' ? ' + ' : t === '-' ? ' − ' : t === ' ' ? '  ·  ' : formatInput(t)))
+    .join('')
+    .trim();
+}
+
+function renderNotes() {
+  const cur = state.current;
+  $('#notes-text').textContent = formatNotes(cur.notes);
+  $('#notes-clear').hidden = cur.answered || cur.notes === '';
+}
+
+function notesPress(key) {
+  const cur = state.current;
+  let s = cur.notes;
+  const lastToken = s.split(/[+\-\s]/).pop();
+  if (key === 'back') s = s.slice(0, -1);
+  else if (key === '+' || key === '-') {
+    if (/[+\-\s]$/.test(s)) s = s.slice(0, -1);
+    if (s || key === '-') s += key;
+  } else if (key === ' ') {
+    if (s && !/[+\-\s]$/.test(s)) s += ' ';
+  } else if ('KMB'.includes(key)) {
+    if (/\d$/.test(s)) s += key;
+    else if (/[KMB]$/.test(s)) s = s.slice(0, -1) + key;
+  } else if (key === '.') {
+    if (!lastToken.includes('.') && !/[KMB]$/.test(lastToken)) s += /\d$/.test(s) ? '.' : '0.';
+  } else if (/^\d$/.test(key)) {
+    if (/[KMB]$/.test(s)) s += ' '; // a new number after "240K"
+    else if (lastToken.replace(/\D/g, '').length >= 12) return;
+    s += key;
+  } else return;
+  if (s.length > 80) return;
+  cur.notes = s;
+  renderNotes();
 }
 
 function formatInput(s) {
@@ -390,6 +477,8 @@ function renderAnswer() {
 function press(key) {
   const cur = state.current;
   if (!cur || cur.answered || state.view !== 'drill') return;
+  if (key === 'target') return setTarget(cur.target === 'notes' ? 'answer' : 'notes');
+  if (state.settings.notes && cur.target === 'notes') return notesPress(key);
   const kind = cur.problem.kind;
   let s = cur.input;
   if (key === 'back') s = s.slice(0, -1);
@@ -406,7 +495,7 @@ function press(key) {
     if (/[KMB]$/.test(s) || s.replace(/\D/g, '').length >= 12) return;
     if (s === '0' || s === '-0') s = s.slice(0, -1);
     s += key;
-  }
+  } else return;
   cur.input = s;
   renderAnswer();
 }
@@ -478,6 +567,7 @@ function renderFeedback(attempt, p) {
   $('#next-actions').hidden = false;
   $('#next-btn').textContent = sessionFinished(state.session) ? 'See summary' : 'Next';
   $('#next-btn').focus({ preventScroll: true });
+  renderTarget();
   renderDrillTop();
 }
 
@@ -492,10 +582,16 @@ function onKey(e) {
     }
     return;
   }
+  const inNotes = state.settings.notes && state.current.target === 'notes';
   if (/^[0-9]$/.test(k)) press(k);
   else if (k === '.' || k === ',') press('.');
   else if (/^[kmb]$/i.test(k)) press(k.toUpperCase());
-  else if (k === '-') press('neg');
+  else if (k === 'Tab' && state.settings.notes) press('target');
+  else if (k === '+' && state.settings.notes) {
+    setTarget('notes');
+    press('+');
+  } else if (k === '-') press(inNotes ? '-' : 'neg');
+  else if (k === ' ' && inNotes) press(' ');
   else if (k === 'Backspace') press('back');
   else if (k === 'Enter') submit(false);
   else if (k === 'Escape') exitDrill();
@@ -860,6 +956,8 @@ async function renderSettings() {
       'Exact needs the precise value for clean problems and 3 significant figures for messy ones.'),
     choiceRow('Consulting word problems', [['off', 'Off'], ['some', 'Some'], ['often', 'Often']], s.context, (v) => set('context', v),
       'Wraps problems in a short business story, e.g. stores × units sold.'),
+    choiceRow('Notes field', [[true, 'On'], [false, 'Off']], s.notes, (v) => set('notes', v),
+      'A line above the answer to jot working values with the keypad (+, −, space). It never calculates. Clears for each problem.'),
     choiceRow('Theme', [['system', 'Auto'], ['light', 'Light'], ['dark', 'Dark']], s.theme, (v) => set('theme', v))
   );
 

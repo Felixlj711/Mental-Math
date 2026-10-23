@@ -60,6 +60,7 @@
         <button type="button" role="radio" data-value="2">Medium</button>
         <button type="button" role="radio" data-value="3">Hard</button>
       </div>
+      <p class="setting-help" id="difficulty-help"></p>
 
       <h2 class="section-label" id="session-label">Session</h2>
       <div class="session-grid" id="session-seg" role="radiogroup" aria-labelledby="session-label">
@@ -92,8 +93,16 @@
         <p class="problem-text" id="p-text"></p>
       </div>
 
+      <div class="notes" id="notes">
+        <button type="button" class="notes-field" id="notes-field" aria-label="Notes: tap to type working values">
+          <span class="notes-label">Notes</span>
+          <span class="notes-text" id="notes-text"></span>
+        </button>
+        <button type="button" class="notes-clear" id="notes-clear" aria-label="Clear notes" hidden>✕</button>
+      </div>
+
       <div class="answer-wrap">
-        <div class="answer-box" id="answer-box" role="status" aria-label="Your answer">
+        <div class="answer-box" id="answer-box" role="button" tabindex="-1" aria-label="Your answer">
           <span id="answer-text"></span><span class="answer-unit" id="answer-unit"></span>
         </div>
         <p class="hint" id="p-hint"></p>
@@ -112,18 +121,22 @@
         <button type="button" data-key="8">8</button>
         <button type="button" data-key="9">9</button>
         <button type="button" data-key="back" class="fn" aria-label="Delete">⌫</button>
+        <button type="button" data-key="+" class="fn note-key" aria-label="Plus (notes)">+</button>
         <button type="button" data-key="4">4</button>
         <button type="button" data-key="5">5</button>
         <button type="button" data-key="6">6</button>
         <button type="button" data-key="K" class="fn">K</button>
+        <button type="button" data-key="-" class="fn note-key" aria-label="Minus (notes)">−</button>
         <button type="button" data-key="1">1</button>
         <button type="button" data-key="2">2</button>
         <button type="button" data-key="3">3</button>
         <button type="button" data-key="M" class="fn">M</button>
+        <button type="button" data-key=" " class="fn note-key" aria-label="Space (notes)">␣</button>
         <button type="button" data-key="neg" class="fn" aria-label="Plus or minus">±</button>
         <button type="button" data-key="0">0</button>
         <button type="button" data-key="." aria-label="Decimal point">.</button>
         <button type="button" data-key="B" class="fn">B</button>
+        <button type="button" data-key="target" class="fn note-key target-key" id="target-key">Notes</button>
       </div>
 
       <div class="drill-actions" id="answer-actions">
