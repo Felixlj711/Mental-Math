@@ -7,6 +7,7 @@ import { ProblemEngine, SEEN_WINDOW } from '../js/engine.js';
 import { createRng } from '../js/rng.js';
 import { parseAnswer, checkAnswer, displayAnswer, fmtNum } from '../js/format.js';
 import { streaks, weekComparison, mistakeTypes, goalProgress, startOfWeek, addDays } from '../js/stats.js';
+import { SIZING_COMBOS, SIZING_TEMPLATES, SizingPicker, makeCase, evaluate, fmtStage, COUNTRIES, CITIES } from '../js/sizing.js';
 
 let failures = 0;
 let checks = 0;
@@ -207,6 +208,56 @@ if (failures) {
   console.log('\nFailure kinds:');
   for (const [k, n] of failureKinds) console.log(`   ${n}× ${k}`);
 }
+// ---------- 6. Market sizing ----------
+console.log('6. Market sizing cases');
+{
+  const regions = new Map([...COUNTRIES, ...CITIES].map((r) => [r.id, r]));
+  for (const combo of SIZING_COMBOS) {
+    const c = makeCase(combo);
+    const where = combo.fingerprint;
+    assert(Number.isFinite(c.answer) && c.answer > 0, `${where}: bad answer ${c.answer}`);
+    assert(c.steps.length >= 2 && c.finalStep.kind === 'calc', `${where}: last stage must be a calculation`);
+    assert(c.clarify.questions.length >= 2 && c.clarify.answer, `${where}: clarify content missing`);
+    assert(c.facts.length >= 1, `${where}: no key facts`);
+    const keys = new Set();
+    for (const st of c.steps) {
+      assert(!keys.has(st.key), `${where}: duplicate stage key ${st.key}`);
+      keys.add(st.key);
+      assert(st.ask && st.plan, `${where}: stage ${st.key} missing text`);
+      if (st.kind !== 'calc') assert(st.note && Number.isFinite(st.value) && st.value > 0, `${where}: stage ${st.key} needs a value and note`);
+      if (st.kind === 'calc') assert(!/undefined|NaN/.test(st.formula(c.ref)), `${where}: bad formula text for ${st.key}`);
+      assert(fmtStage(st, c.ref[st.key], c.region.cur) !== '–', `${where}: stage ${st.key} has no reference value`);
+    }
+    // facts match the region's known figures
+    const R = regions.get(c.region.id);
+    for (const st of c.steps.filter((x) => x.kind === 'fact')) {
+      if (st.key === 'pop') assert(st.value === R.pop, `${where}: population fact mismatch`);
+      if (st.key === 'hh' && !R.city) assert(st.value === R.hh, `${where}: household fact mismatch`);
+    }
+    assert(!/undefined|NaN|Infinity/.test(c.sense(c.ref) + c.question), `${where}: broken text`);
+    // different assumptions flow through the chain
+    const inputs = {};
+    const firstAssumption = c.steps.find((x) => x.kind === 'assume');
+    for (const st of c.steps) if (st.kind !== 'calc') inputs[st.key] = st.value * (st === firstAssumption ? 1.5 : 1);
+    const v = evaluate(c.steps, inputs);
+    assert(Number.isFinite(v[c.finalStep.key]) && Math.abs(v[c.finalStep.key] / c.answer - 1) > 0.01, `${where}: your assumptions must flow through to the answer`);
+  }
+  // picker: every case once before any repeat, never the same case type twice in a row
+  const picker = new SizingPicker({ rng: createRng(3) });
+  const seenFp = new Set();
+  let prev = null;
+  let backToBack = 0;
+  for (let i = 0; i < SIZING_COMBOS.length; i++) {
+    const c = picker.next();
+    seenFp.add(c.fingerprint);
+    if (prev === c.templateId) backToBack++;
+    prev = c.templateId;
+  }
+  assert(seenFp.size >= SIZING_COMBOS.length - 2, `sizing picker repeated too early: ${seenFp.size} distinct of ${SIZING_COMBOS.length}`);
+  assert(backToBack === 0, `sizing picker gave the same case type twice in a row ${backToBack}×`);
+  console.log(`   ${SIZING_TEMPLATES.length} case types, ${SIZING_COMBOS.length} case/region combinations, ${seenFp.size} distinct in the first ${SIZING_COMBOS.length} picks`);
+}
+
 console.log(`\n${checks.toLocaleString('en-US')} checks, ${failures} failures`);
 if (Number.isFinite(smallest)) console.log(`Smallest problem space for a single template/level: ~${smallest.toLocaleString('en-US')}`);
 process.exit(failures ? 1 : 0);

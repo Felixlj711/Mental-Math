@@ -3,7 +3,7 @@
 // IMPORTANT: whenever you change any file, bump VERSION below. That is how
 // phones notice there is an update (they then show an "Update" button).
 
-const VERSION = 'v1.2.0';
+const VERSION = 'v1.3.0';
 const CACHE = `mental-math-${VERSION}`;
 
 const FILES = [
@@ -14,10 +14,13 @@ const FILES = [
   './js/app.js',
   './js/chart.js',
   './js/db.js',
+  './js/dom.js',
   './js/engine.js',
   './js/format.js',
   './js/generators.js',
   './js/rng.js',
+  './js/sizing.js',
+  './js/sizing-ui.js',
   './js/stats.js',
   './icons/icon.svg',
   './icons/icon-192.png',

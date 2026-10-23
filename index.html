@@ -27,7 +27,8 @@
     <!-- ================= PRACTICE ================= -->
     <section id="view-home" class="view" aria-labelledby="home-title">
       <header class="page-head">
-        <h1 id="home-title">Mental Math</h1>
+        <button type="button" class="icon-btn back-btn" id="home-back" aria-label="Back to practice menu" hidden>‹</button>
+        <h1 id="home-title">Practice</h1>
         <div class="streak-pill" id="home-streak" title="Daily streak">
           <span aria-hidden="true">🔥</span>
           <span id="home-streak-count">0</span>
@@ -35,6 +36,8 @@
         </div>
       </header>
 
+      <!-- step 1: choose what to practise -->
+      <div id="home-choose">
       <div class="card goal-card">
         <div class="goal-row">
           <span class="muted" id="home-goal-label">Weekly goal</span>
@@ -43,6 +46,23 @@
         <div class="progress" aria-hidden="true"><span id="home-goal-bar"></span></div>
       </div>
 
+      <h2 class="section-label">What do you want to practise?</h2>
+      <div class="track-list">
+        <button type="button" class="track-card" data-track="math">
+          <span class="track-icon" aria-hidden="true">×÷</span>
+          <span class="track-body"><strong>Mental math</strong><small>Fast calculations: ×, %, growth, ÷</small></span>
+          <span class="track-chev" aria-hidden="true">›</span>
+        </button>
+        <button type="button" class="track-card" data-track="sizing">
+          <span class="track-icon" aria-hidden="true">≈</span>
+          <span class="track-body"><strong>Market sizing</strong><small>Guided estimates for the UK and Europe</small></span>
+          <span class="track-chev" aria-hidden="true">›</span>
+        </button>
+      </div>
+      </div>
+
+      <!-- mental math setup -->
+      <div id="home-math" hidden>
       <h2 class="section-label" id="mode-label">Mode</h2>
       <div class="segmented stacked-seg" id="mode-seg" role="radiogroup" aria-labelledby="mode-label">
         <button type="button" role="radio" data-value="mixed"><span class="seg-icon" aria-hidden="true">Σ</span>Mixed</button>
@@ -74,6 +94,83 @@
       <p class="setting-help" id="session-help"></p>
 
       <button type="button" class="btn primary big" id="start-btn">Start</button>
+      </div>
+
+      <!-- market sizing setup -->
+      <div id="home-sizing" hidden>
+        <p class="muted sz-intro">Work through a case like in an interview: clarify, plan, estimate each stage, then sense-check. Facts and your final answer count if within ±20%.</p>
+        <h2 class="section-label" id="sz-count-label">Cases</h2>
+        <div class="segmented" id="sizing-count-seg" role="radiogroup" aria-labelledby="sz-count-label">
+          <button type="button" role="radio" data-value="3">3</button>
+          <button type="button" role="radio" data-value="5">5</button>
+          <button type="button" role="radio" data-value="10">10</button>
+        </div>
+        <p class="setting-help" id="sizing-help"></p>
+        <button type="button" class="btn primary big" id="sizing-start-btn">Start</button>
+        <details class="card facts-sheet">
+          <summary>Numbers worth knowing</summary>
+          <ul id="key-numbers"></ul>
+        </details>
+      </div>
+    </section>
+
+    <!-- ================= MARKET SIZING CASE ================= -->
+    <section id="view-sizing" class="view sizing" hidden aria-label="Market sizing case">
+      <div class="drill-top">
+        <button type="button" class="icon-btn" id="sz-exit" aria-label="End session">✕</button>
+        <div class="drill-progress">
+          <div class="progress thin" aria-hidden="true"><span id="sz-bar"></span></div>
+          <span id="sz-counter" class="drill-counter">Case 1 / 5</span>
+        </div>
+        <button type="button" class="btn small" id="sz-facts-btn" aria-expanded="false" aria-controls="sz-facts">Key facts</button>
+      </div>
+
+      <div class="sz-scroll" id="sz-scroll">
+        <div class="sz-question">
+          <span class="tag" id="sz-tag"></span>
+          <p class="problem-text" id="sz-question"></p>
+        </div>
+        <div class="card sz-facts" id="sz-facts" hidden>
+          <div class="sz-card-title">Key facts</div>
+          <ul id="sz-facts-list"></ul>
+        </div>
+        <div id="sz-log" aria-live="polite"></div>
+      </div>
+
+      <div class="sz-dock">
+        <div id="sz-input" hidden>
+          <p class="sz-context" id="sz-context"></p>
+          <p class="sz-ask" id="sz-ask"></p>
+          <div class="answer-box" id="sz-answer" aria-label="Your estimate">
+            <span id="sz-answer-text"></span><span class="answer-unit" id="sz-answer-unit"></span>
+          </div>
+          <p class="hint" id="sz-hint"></p>
+          <div class="keypad" id="sz-keypad">
+            <button type="button" data-key="7">7</button>
+            <button type="button" data-key="8">8</button>
+            <button type="button" data-key="9">9</button>
+            <button type="button" data-key="back" class="fn" aria-label="Delete">⌫</button>
+            <button type="button" data-key="4">4</button>
+            <button type="button" data-key="5">5</button>
+            <button type="button" data-key="6">6</button>
+            <button type="button" data-key="K" class="fn">K</button>
+            <button type="button" data-key="1">1</button>
+            <button type="button" data-key="2">2</button>
+            <button type="button" data-key="3">3</button>
+            <button type="button" data-key="M" class="fn">M</button>
+            <button type="button" data-key="." aria-label="Decimal point">.</button>
+            <button type="button" data-key="0" class="wide-key">0</button>
+            <button type="button" data-key="B" class="fn">B</button>
+          </div>
+          <div class="drill-actions">
+            <button type="button" class="btn ghost" id="sz-reveal">Reveal</button>
+            <button type="button" class="btn primary" id="sz-check">Check</button>
+          </div>
+        </div>
+        <div class="drill-actions single" id="sz-continue-wrap">
+          <button type="button" class="btn primary" id="sz-continue">Continue</button>
+        </div>
+      </div>
     </section>
 
     <!-- ================= DRILL ================= -->

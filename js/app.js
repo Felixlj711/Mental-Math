@@ -6,8 +6,11 @@ import { MODES, TEMPLATE_BY_ID } from './generators.js';
 import { parseAnswer, checkAnswer, displayAnswer, fmtValue, withCommas } from './format.js';
 import * as stats from './stats.js';
 import { lineChart } from './chart.js';
+import { $, $$, h, uid, toast, secs, editNumber, formatInput } from './dom.js';
+import { initSizing, startSizing, sizingActive, exitSizing } from './sizing-ui.js';
+import { KEY_NUMBERS, fmtStage } from './sizing.js';
 
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.3.0';
 
 const DEFAULTS = {
   tolerance: 2, // 0 = exact, 2 = ±2%, 5 = ±5%
@@ -20,6 +23,7 @@ const DEFAULTS = {
   sessionValue: 20,
   mode: 'mixed',
   notes: true, // notes field above the answer
+  sizingCount: 5, // market sizing cases per session
   lastExport: null,
 };
 
@@ -32,7 +36,10 @@ const ALLOWED = {
   sessionType: ['count', 'time'],
   mode: ['mult', 'pct', 'growth', 'div', 'mixed', 'review'],
   notes: [true, false],
+  sizingCount: [3, 5, 10],
 };
+
+const TRACK_TITLES = { null: 'Practice', math: 'Mental math', sizing: 'Market sizing' };
 
 const MODE_HELP = {
   mixed: 'All four modes, shuffled.',
@@ -65,44 +72,13 @@ const state = {
   calMonth: null,
   storageOk: true,
   pendingUpdate: null,
+  homeTrack: null, // null = choose, 'math' or 'sizing'
 };
 
-// ---------- small DOM helpers ----------
-const $ = (sel, root = document) => root.querySelector(sel);
-const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
-
-// Builds elements with textContent only (never innerHTML), so data from an
-// imported file can't inject code into the page.
-function h(tag, attrs = {}, ...children) {
-  const el = document.createElement(tag);
-  for (const [k, v] of Object.entries(attrs || {})) {
-    if (v == null || v === false) continue;
-    if (k === 'class') el.className = v;
-    else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
-    else el.setAttribute(k, v === true ? '' : v);
-  }
-  for (const c of children.flat()) {
-    if (c == null || c === false) continue;
-    el.append(c instanceof Node ? c : document.createTextNode(String(c)));
-  }
-  return el;
-}
-
-function uid() {
-  return globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-}
-
-let toastTimer = null;
-function toast(message) {
-  const el = $('#toast');
-  el.textContent = message;
-  el.hidden = false;
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => (el.hidden = true), 3500);
-}
+// Market sizing is tracked separately from the maths stats, streak and goal.
+const mathAttempts = () => state.attempts.filter((a) => a.mode !== 'sizing');
 
 const pct = (x) => (x == null ? '–' : `${Math.round(x * 100)}%`);
-const secs = (x) => (x == null ? '–' : `${x < 10 ? x.toFixed(1) : Math.round(x)} s`);
 
 // ---------- start-up ----------
 async function init() {
@@ -127,7 +103,7 @@ async function init() {
 
 function rebuildEngine() {
   state.engine = new ProblemEngine({
-    recentFingerprints: state.attempts.slice(-SEEN_WINDOW).map((a) => a.fingerprint),
+    recentFingerprints: mathAttempts().slice(-SEEN_WINDOW).map((a) => a.fingerprint),
     rotation: state.rotation,
     context: state.settings.context,
   });
@@ -164,11 +140,25 @@ function showView(name, { push = true } = {}) {
   if (name === 'home') renderHome();
   if (name === 'progress') renderProgress();
   if (name === 'settings') renderSettings();
-  if (name !== 'drill' && state.pendingUpdate) $('#update-banner').hidden = false;
+  if (name !== 'drill' && name !== 'sizing' && state.pendingUpdate) $('#update-banner').hidden = false;
+}
+
+// Practice tab: choose a track first; Back returns to the choice.
+function setTrack(track, { push = true } = {}) {
+  state.homeTrack = track;
+  if (push && track) history.pushState({ view: 'home', track }, '');
+  if (!track && history.state?.track) history.replaceState({ view: 'home' }, '');
+  renderHome();
+  window.scrollTo(0, 0);
 }
 
 // Android back button
 window.addEventListener('popstate', (e) => {
+  if (state.view === 'sizing' && sizingActive()) {
+    history.pushState({ view: 'sizing' }, '');
+    exitSizing(true);
+    return;
+  }
   if (state.view === 'drill' && state.session) {
     if (!confirm('End this session? Your answers so far are saved.')) {
       history.pushState({ view: 'drill' }, '');
@@ -178,12 +168,32 @@ window.addEventListener('popstate', (e) => {
     return;
   }
   const target = e.state?.view;
-  showView(target && target !== 'drill' && target !== 'summary' ? target : 'home', { push: false });
+  if (!target || target === 'home') state.homeTrack = e.state?.track ?? null;
+  showView(target && !['drill', 'summary', 'sizing'].includes(target) ? target : 'home', { push: false });
 });
 
 // ---------- static event wiring ----------
 function bindStatic() {
   for (const t of $$('.tab')) t.addEventListener('click', () => showView(t.dataset.view));
+
+  for (const c of $$('.track-card')) c.addEventListener('click', () => setTrack(c.dataset.track));
+  $('#home-back').addEventListener('click', () => (history.state?.track ? history.back() : setTrack(null, { push: false })));
+  bindChoice('#sizing-count-seg', (v) => {
+    state.settings.sizingCount = Number(v);
+    saveSettings();
+    renderHome();
+  });
+  $('#sizing-start-btn').addEventListener('click', () => startSizing(state.settings.sizingCount));
+  $('#key-numbers').replaceChildren(...KEY_NUMBERS.map((line) => h('li', {}, line)));
+  initSizing({
+    getAttempts: () => state.attempts,
+    saveAttempt: (attempt) => {
+      state.attempts.push(attempt);
+      if (state.storageOk) db.addAttempt(attempt).catch(() => toast("Couldn't save that case"));
+    },
+    showView,
+    onFinish: finishSizing,
+  });
 
   bindChoice('#mode-seg', (v) => {
     state.settings.mode = v;
@@ -244,16 +254,25 @@ function markChoice(sel, value) {
 // ---------- Practice screen ----------
 function renderHome() {
   const s = state.settings;
-  const st = stats.streaks(state.attempts);
+  const track = state.homeTrack;
+  $('#home-title').textContent = TRACK_TITLES[track];
+  $('#home-back').hidden = !track;
+  $('#home-choose').hidden = track !== null;
+  $('#home-math').hidden = track !== 'math';
+  $('#home-sizing').hidden = track !== 'sizing';
+  markChoice('#sizing-count-seg', s.sizingCount);
+  $('#sizing-help').textContent = `${s.sizingCount} cases, about ${s.sizingCount * 3}–${s.sizingCount * 5} minutes.`;
+
+  const st = stats.streaks(mathAttempts());
   $('#home-streak-count').textContent = st.current;
   $('#home-streak').title = st.practicedToday ? `${st.current}-day streak, practised today` : `${st.current}-day streak`;
-  const goal = stats.goalProgress({ type: s.goalType, target: s.goalTarget }, state.attempts);
+  const goal = stats.goalProgress({ type: s.goalType, target: s.goalTarget }, mathAttempts());
   $('#home-goal-text').textContent = `${goal.done} / ${goal.target} ${goal.unit}`;
   $('#home-goal-bar').style.width = `${goal.fraction * 100}%`;
   $('#home-goal-bar').parentElement.classList.toggle('done', goal.fraction >= 1);
   $('#home-goal-label').textContent = goal.fraction >= 1 ? 'Weekly goal reached ✓' : 'Weekly goal';
 
-  const mistakes = stats.mistakeTypes(state.attempts);
+  const mistakes = stats.mistakeTypes(mathAttempts());
   $('#mode-seg [data-value="review"]').disabled = mistakes.length === 0;
   if (s.mode === 'review' && !mistakes.length) s.mode = 'mixed';
   markChoice('#mode-seg', s.mode);
@@ -276,7 +295,7 @@ function startSession(mode, poolOverride = null) {
   const s = state.settings;
   let spec;
   if (mode === 'review') {
-    const pool = poolOverride || stats.mistakeTypes(state.attempts).map((m) => ({ templateId: m.templateId, difficulty: m.difficulty, weight: m.weight }));
+    const pool = poolOverride || stats.mistakeTypes(mathAttempts()).map((m) => ({ templateId: m.templateId, difficulty: m.difficulty, weight: m.weight }));
     if (!pool.length) {
       toast('No mistakes to review yet. Nice!');
       return;
@@ -463,13 +482,6 @@ function notesPress(key) {
   renderNotes();
 }
 
-function formatInput(s) {
-  const m = /^(-?)(\d*)(\.?\d*)([KMB]?)$/.exec(s);
-  if (!m) return s;
-  const int = m[2] ? Number(m[2]).toLocaleString('en-US') : m[3] ? '0' : '';
-  return (m[1] ? '−' : '') + int + m[3] + m[4];
-}
-
 function renderAnswer() {
   const input = state.current.input;
   $('#answer-text').textContent = formatInput(input);
@@ -481,23 +493,10 @@ function press(key) {
   if (!cur || cur.answered || state.view !== 'drill') return;
   if (key === 'target') return setTarget(cur.target === 'notes' ? 'answer' : 'notes');
   if (state.settings.notes && cur.target === 'notes') return notesPress(key);
-  const kind = cur.problem.kind;
-  let s = cur.input;
-  if (key === 'back') s = s.slice(0, -1);
-  else if (key === 'neg') {
-    if (!cur.problem.signed) return;
-    s = s.startsWith('-') ? s.slice(1) : '-' + s;
-  } else if ('KMB'.includes(key)) {
-    if (kind !== 'number') return;
-    s = s.replace(/[KMB]$/, '');
-    if (/\d/.test(s)) s += key;
-  } else if (key === '.') {
-    if (!/[.KMB]/.test(s)) s += /\d$/.test(s) ? '.' : '0.';
-  } else if (/^\d$/.test(key)) {
-    if (/[KMB]$/.test(s) || s.replace(/\D/g, '').length >= 12) return;
-    if (s === '0' || s === '-0') s = s.slice(0, -1);
-    s += key;
-  } else return;
+  if ('KMB'.includes(key) && cur.problem.kind !== 'number') return;
+  if (key === 'neg' && !cur.problem.signed) return;
+  if (!['back', 'neg', '.', 'K', 'M', 'B'].includes(key) && !/^\d$/.test(key)) return;
+  const s = editNumber(cur.input, key, { allowNegative: cur.problem.signed });
   cur.input = s;
   renderAnswer();
 }
@@ -665,11 +664,13 @@ function tile(value, label) {
 function renderProgress() {
   const root = $('#progress-content');
   root.replaceChildren();
-  const all = state.attempts;
+  const all = mathAttempts();
+  const sizing = state.attempts.filter((a) => a.mode === 'sizing');
   if (!all.length) {
     root.append(
-      h('div', { class: 'card' }, h('h2', {}, 'No practice yet'), h('p', { class: 'muted' }, 'Finish a few problems and your progress will appear here.'))
+      h('div', { class: 'card' }, h('h2', {}, sizing.length ? 'No mental math yet' : 'No practice yet'), h('p', { class: 'muted' }, 'Finish a few problems and your progress will appear here.'))
     );
+    if (sizing.length) root.append(sizingCard(sizing));
     return;
   }
   const s = state.settings;
@@ -744,8 +745,72 @@ function renderProgress() {
   }
 
   root.append(weekTable(all));
+  if (sizing.length) root.append(sizingCard(sizing));
   root.append(trendCard(all));
   root.append(calendarCard(all));
+}
+
+function mmss(ms) {
+  const sec = Math.round(ms / 1000);
+  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+}
+
+function sizingCard(list) {
+  const weekStart = stats.startOfWeek(Date.now());
+  const week = list.filter((a) => a.ts >= weekStart);
+  const ok = list.filter((a) => a.correct).length;
+  const factsRight = list.reduce((n, a) => n + (a.factsRight || 0), 0);
+  const factsTotal = list.reduce((n, a) => n + (a.factsTotal || 0), 0);
+  const avg = list.reduce((n, a) => n + a.timeMs, 0) / list.length;
+  return h(
+    'div',
+    { class: 'card' },
+    h('h2', {}, 'Market sizing'),
+    h('p', { class: 'muted small' }, `${week.length} case${week.length === 1 ? '' : 's'} this week · ${list.length} in total · ${mmss(avg)} per case`),
+    h(
+      'div',
+      { class: 'tiles' },
+      tile(`${Math.round((ok / list.length) * 100)}%`, 'within ±20%'),
+      tile(factsTotal ? `${Math.round((factsRight / factsTotal) * 100)}%` : '–', 'facts right'),
+      tile(String(list.length), 'cases')
+    ),
+    h('button', { type: 'button', class: 'btn primary', onclick: () => { state.homeTrack = 'sizing'; showView('home'); } }, 'Practise market sizing')
+  );
+}
+
+function finishSizing(done) {
+  if (!done.results.length) {
+    showView('home');
+    return;
+  }
+  renderSizingSummary(done);
+  showView('summary');
+}
+
+function renderSizingSummary(done) {
+  const n = done.results.length;
+  const ok = done.results.filter((r) => r.attempt.correct).length;
+  const fr = done.results.reduce((x, r) => x + r.attempt.factsRight, 0);
+  const ft = done.results.reduce((x, r) => x + r.attempt.factsTotal, 0);
+  const avg = done.results.reduce((x, r) => x + r.attempt.timeMs, 0) / n;
+  $('#summary-title').textContent = ok / n >= 0.6 ? 'Good estimating' : 'Session done';
+  $('#summary-sub').textContent = `Market sizing · ${n} case${n === 1 ? '' : 's'}`;
+  $('#summary-tiles').replaceChildren(tile(`${ok}/${n}`, 'within ±20%'), tile(`${fr}/${ft}`, 'facts right'), tile(mmss(avg), 'avg per case'));
+  $('#summary-modes').replaceChildren();
+  $('#summary-miss-label').textContent = 'Cases';
+  $('#summary-misses').replaceChildren(
+    ...done.results.map(({ attempt, c, yours }) =>
+      h(
+        'li',
+        {},
+        h('div', { class: 'miss-q' }, c.question),
+        h('div', { class: 'miss-a' }, `${attempt.correct ? '✓' : '✗'} You ${fmtStage(c.finalStep, yours, c.region.cur)} · Me ${fmtStage(c.finalStep, c.answer, c.region.cur)}`),
+        h('div', { class: 'miss-x' }, 'Path: ' + c.steps.map((st) => fmtStage(st, c.ref[st.key], c.region.cur)).join(' → '))
+      )
+    )
+  );
+  $('#again-btn').onclick = () => startSizing(done.target);
+  $('#review-these-btn').hidden = true;
 }
 
 function delta(now, before, { kind, better }) {
@@ -1038,8 +1103,10 @@ function sanitizeAttempt(a) {
   if (!a || typeof a !== 'object') return null;
   const str = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '');
   const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
-  if (num(a.ts) == null || !MODES[a.mode] || ![1, 2, 3].includes(a.difficulty)) return null;
+  if (num(a.ts) == null || !(MODES[a.mode] || a.mode === 'sizing') || ![1, 2, 3].includes(a.difficulty)) return null;
+  const extra = a.mode === 'sizing' ? { factsRight: Math.max(0, num(a.factsRight) ?? 0), factsTotal: Math.max(0, num(a.factsTotal) ?? 0) } : {};
   return {
+    ...extra,
     ts: a.ts,
     sessionId: str(a.sessionId, 64),
     mode: a.mode,
@@ -1047,13 +1114,13 @@ function sanitizeAttempt(a) {
     difficulty: a.difficulty,
     correct: a.correct === true,
     skipped: a.skipped === true,
-    timeMs: Math.max(0, Math.min(num(a.timeMs) ?? 0, 600000)),
+    timeMs: Math.max(0, Math.min(num(a.timeMs) ?? 0, 3600000)),
     prompt: str(a.prompt, 400),
     answer: num(a.answer) ?? 0,
     kind: ['number', 'percent', 'years', 'times'].includes(a.kind) ? a.kind : 'number',
     given: num(a.given),
     fingerprint: str(a.fingerprint, 200),
-    tolerance: [0, 2, 5].includes(a.tolerance) ? a.tolerance : 2,
+    tolerance: [0, 2, 5, 20].includes(a.tolerance) ? a.tolerance : 2,
   };
 }
 

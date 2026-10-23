@@ -2,6 +2,17 @@
 
 A mental-math trainer for consulting interviews. It installs on your phone like an app, works fully offline, and keeps your history on your phone.
 
+- **Two tracks**: the Practice tab first asks whether you want **Mental math** or **Market sizing**. **‹ Back** (or Android's back gesture) returns to that choice.
+- **Market sizing**: guided cases for the UK and Europe (18 case types across 6 countries and 7 cities), run like an interview:
+  1. **Clarify**: think of your questions, then reveal mine and the interviewer's answer.
+  2. **Plan**: think through your structure, then reveal the approach.
+  3. **Estimate stage by stage**:
+     - **facts** (population, households) count if within ±20%;
+     - **assumptions** are never wrong: you see "I'd have gone with…" and why;
+     - **calculations** are checked against *your own* numbers.
+  4. **Sense check**, then your final answer against mine (±20%), with a side-by-side table of every step.
+
+  **Key facts** are hidden behind a tap, and a **Numbers worth knowing** sheet is on the setup screen. Sizing results have their own card on the Progress screen and don't count toward the maths streak or weekly goal.
 - **4 drill modes + Mixed**: multiplication, percentages, growth rates, large-number division. Each has 3 difficulty levels.
 - **Never repeats**: every problem is generated from random numbers (no question bank). Anything you've seen in your last 10,000 problems is blocked. The same problem type never comes twice in a row, and the wording and business stories rotate.
 - **Realistic numbers**: business-style figures (€2.4M, 36B, 1,250 stores) and consulting stories in € and £. Each story only appears when its numbers make sense.
@@ -23,6 +34,9 @@ A mental-math trainer for consulting interviews. It installs on your phone like 
 | `js/engine.js` | Picks the next problem, blocks repeats, rotates wording |
 | `js/format.js` | Formats numbers (2.4M), reads your answers, checks tolerance |
 | `js/stats.js` | Streaks, weekly comparisons, weakest mode, mistakes |
+| `js/sizing.js` | Market sizing cases: regions, key numbers, stages, reference estimates |
+| `js/sizing-ui.js` | The guided market sizing screen |
+| `js/dom.js` | Small shared helpers (building page elements, the keypad input rules) |
 | `js/db.js` | Saves your history on the phone (IndexedDB) |
 | `js/chart.js` | The small charts on the Progress screen |
 | `js/app.js` | Connects everything: screens, buttons, sessions |
