@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- Security: only load code and styles from this site, nothing from anywhere else -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <title>Mental Math Drills</title>
+  <meta name="description" content="Offline mental-math drills for consulting interview prep">
+  <meta name="theme-color" content="#f4f5f7">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="styles.css">
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <noscript><p class="noscript">This app needs JavaScript turned on.</p></noscript>
+
+  <div id="update-banner" class="update-banner" hidden>
+    <span>A new version is ready.</span>
+    <button type="button" class="btn small primary" id="update-btn">Update</button>
+  </div>
+
+  <main class="app">
+    <!-- ================= PRACTICE ================= -->
+    <section id="view-home" class="view" aria-labelledby="home-title">
+      <header class="page-head">
+        <h1 id="home-title">Mental Math</h1>
+        <div class="streak-pill" title="Daily streak">
+          <span aria-hidden="true">🔥</span>
+          <span id="home-streak-count">0</span>
+          <span class="sr-only">day streak</span>
+        </div>
+      </header>
+
+      <div class="card goal-card">
+        <div class="goal-row">
+          <span class="muted" id="home-streak-note">Start a streak today</span>
+          <span class="goal-text" id="home-goal-text">0 / 150</span>
+        </div>
+        <div class="progress" aria-hidden="true"><span id="home-goal-bar"></span></div>
+        <div class="muted small" id="home-goal-label">Weekly goal</div>
+      </div>
+
+      <h2 class="section-label">Mode</h2>
+      <div class="mode-grid" id="mode-grid" role="radiogroup" aria-label="Mode">
+        <button type="button" class="mode-btn" role="radio" data-mode="mult"><span class="mode-icon" aria-hidden="true">×</span><span>Multiplication</span></button>
+        <button type="button" class="mode-btn" role="radio" data-mode="pct"><span class="mode-icon" aria-hidden="true">%</span><span>Percentages</span></button>
+        <button type="button" class="mode-btn" role="radio" data-mode="growth"><span class="mode-icon" aria-hidden="true">↗</span><span>Growth rates</span></button>
+        <button type="button" class="mode-btn" role="radio" data-mode="div"><span class="mode-icon" aria-hidden="true">÷</span><span>Division</span></button>
+        <button type="button" class="mode-btn wide" role="radio" data-mode="mixed"><span class="mode-icon" aria-hidden="true">Σ</span><span>Mixed<small>All modes, shuffled</small></span></button>
+        <button type="button" class="mode-btn wide" role="radio" data-mode="review"><span class="mode-icon" aria-hidden="true">↺</span><span>Review mistakes<small id="review-sub">No mistakes yet</small></span></button>
+      </div>
+
+      <h2 class="section-label" id="diff-label">Difficulty</h2>
+      <div class="segmented" id="difficulty-seg" role="radiogroup" aria-labelledby="diff-label">
+        <button type="button" role="radio" data-value="1">Easy</button>
+        <button type="button" role="radio" data-value="2">Medium</button>
+        <button type="button" role="radio" data-value="3">Hard</button>
+      </div>
+
+      <h2 class="section-label" id="session-label">Session</h2>
+      <div class="session-grid" id="session-seg" role="radiogroup" aria-labelledby="session-label">
+        <span class="session-row-label">Problems</span>
+        <button type="button" role="radio" data-value="count:10">10</button>
+        <button type="button" role="radio" data-value="count:20">20</button>
+        <button type="button" role="radio" data-value="count:50">50</button>
+        <span class="session-row-label">Minutes</span>
+        <button type="button" role="radio" data-value="time:2">2</button>
+        <button type="button" role="radio" data-value="time:5">5</button>
+        <button type="button" role="radio" data-value="time:10">10</button>
+      </div>
+
+      <button type="button" class="btn primary big" id="start-btn">Start</button>
+    </section>
+
+    <!-- ================= DRILL ================= -->
+    <section id="view-drill" class="view drill" hidden aria-label="Drill">
+      <div class="drill-top">
+        <button type="button" class="icon-btn" id="drill-exit" aria-label="End session">✕</button>
+        <div class="drill-progress">
+          <div class="progress thin" aria-hidden="true"><span id="drill-bar"></span></div>
+          <span id="drill-counter" class="drill-counter">1 / 20</span>
+        </div>
+        <span class="drill-score" id="drill-score" aria-label="Correct answers">0 ✓</span>
+      </div>
+
+      <div class="problem" aria-live="polite">
+        <span class="tag" id="p-tag"></span>
+        <p class="problem-text" id="p-text"></p>
+      </div>
+
+      <div class="answer-wrap">
+        <div class="answer-box" id="answer-box" role="status" aria-label="Your answer">
+          <span id="answer-text"></span><span class="answer-unit" id="answer-unit"></span>
+        </div>
+        <p class="hint" id="p-hint"></p>
+      </div>
+
+      <div class="feedback" id="feedback" hidden aria-live="assertive">
+        <div class="fb-head" id="fb-head"></div>
+        <div class="fb-line">Answer <strong id="fb-correct"></strong></div>
+        <div class="fb-line muted" id="fb-yours"></div>
+        <div class="fb-explain" id="fb-explain"></div>
+        <div class="fb-line muted small" id="fb-time"></div>
+      </div>
+
+      <div class="keypad" id="keypad">
+        <button type="button" data-key="7">7</button>
+        <button type="button" data-key="8">8</button>
+        <button type="button" data-key="9">9</button>
+        <button type="button" data-key="back" class="fn" aria-label="Delete">⌫</button>
+        <button type="button" data-key="4">4</button>
+        <button type="button" data-key="5">5</button>
+        <button type="button" data-key="6">6</button>
+        <button type="button" data-key="K" class="fn">K</button>
+        <button type="button" data-key="1">1</button>
+        <button type="button" data-key="2">2</button>
+        <button type="button" data-key="3">3</button>
+        <button type="button" data-key="M" class="fn">M</button>
+        <button type="button" data-key="neg" class="fn" aria-label="Plus or minus">±</button>
+        <button type="button" data-key="0">0</button>
+        <button type="button" data-key="." aria-label="Decimal point">.</button>
+        <button type="button" data-key="B" class="fn">B</button>
+      </div>
+
+      <div class="drill-actions" id="answer-actions">
+        <button type="button" class="btn ghost" id="skip-btn">Skip</button>
+        <button type="button" class="btn primary" id="check-btn">Check</button>
+      </div>
+      <div class="drill-actions" id="next-actions" hidden>
+        <button type="button" class="btn primary" id="next-btn">Next</button>
+      </div>
+    </section>
+
+    <!-- ================= SUMMARY ================= -->
+    <section id="view-summary" class="view" hidden aria-labelledby="summary-title">
+      <header class="page-head">
+        <h1 id="summary-title">Session done</h1>
+      </header>
+      <p class="muted" id="summary-sub"></p>
+      <div class="tiles" id="summary-tiles"></div>
+      <div id="summary-modes"></div>
+      <h2 class="section-label" id="summary-miss-label">To review</h2>
+      <ol class="miss-list" id="summary-misses"></ol>
+      <div class="stack">
+        <button type="button" class="btn primary big" id="again-btn">Practice again</button>
+        <button type="button" class="btn ghost big" id="review-these-btn">Re-drill these problem types</button>
+        <button type="button" class="btn ghost big" id="done-btn">Done</button>
+      </div>
+    </section>
+
+    <!-- ================= PROGRESS ================= -->
+    <section id="view-progress" class="view" hidden aria-labelledby="progress-title">
+      <header class="page-head">
+        <h1 id="progress-title">Progress</h1>
+      </header>
+      <div id="progress-content"></div>
+    </section>
+
+    <!-- ================= SETTINGS ================= -->
+    <section id="view-settings" class="view" hidden aria-labelledby="settings-title">
+      <header class="page-head">
+        <h1 id="settings-title">Settings</h1>
+      </header>
+      <div id="settings-content"></div>
+      <input type="file" id="import-input" accept="application/json,.json" hidden>
+    </section>
+  </main>
+
+  <nav class="tabbar" id="tabbar" aria-label="Main">
+    <button type="button" class="tab" data-view="home"><span aria-hidden="true">▶</span>Practice</button>
+    <button type="button" class="tab" data-view="progress"><span aria-hidden="true">▤</span>Progress</button>
+    <button type="button" class="tab" data-view="settings"><span aria-hidden="true">⚙</span>Settings</button>
+  </nav>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+</body>
+</html>
