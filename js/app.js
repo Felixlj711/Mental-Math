@@ -8,9 +8,9 @@ import * as stats from './stats.js';
 import { lineChart } from './chart.js';
 import { $, $$, h, uid, toast, secs, editNumber, formatInput } from './dom.js';
 import { initSizing, startSizing, sizingActive, exitSizing } from './sizing-ui.js';
-import { KEY_NUMBERS, fmtStage } from './sizing.js';
+import { KEY_NUMBERS, BALLPARK, fmtAnswer, ratioOff, treeText } from './sizing.js';
 
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.4.0';
 
 const DEFAULTS = {
   tolerance: 2, // 0 = exact, 2 = ±2%, 5 = ±5%
@@ -23,7 +23,8 @@ const DEFAULTS = {
   sessionValue: 20,
   mode: 'mixed',
   notes: true, // notes field above the answer
-  sizingCount: 5, // market sizing cases per session
+  sizingType: 'case', // market sizing: full case or structure sprint
+  sizingCount: 5, // market sizing cases (or sprint rounds) per session
   lastExport: null,
 };
 
@@ -36,6 +37,7 @@ const ALLOWED = {
   sessionType: ['count', 'time'],
   mode: ['mult', 'pct', 'growth', 'div', 'mixed', 'review'],
   notes: [true, false],
+  sizingType: ['case', 'sprint'],
   sizingCount: [3, 5, 10],
 };
 
@@ -178,12 +180,17 @@ function bindStatic() {
 
   for (const c of $$('.track-card')) c.addEventListener('click', () => setTrack(c.dataset.track));
   $('#home-back').addEventListener('click', () => (history.state?.track ? history.back() : setTrack(null, { push: false })));
+  bindChoice('#sizing-type-seg', (v) => {
+    state.settings.sizingType = v;
+    saveSettings();
+    renderHome();
+  });
   bindChoice('#sizing-count-seg', (v) => {
     state.settings.sizingCount = Number(v);
     saveSettings();
     renderHome();
   });
-  $('#sizing-start-btn').addEventListener('click', () => startSizing(state.settings.sizingCount));
+  $('#sizing-start-btn').addEventListener('click', () => startSizing(state.settings.sizingType, state.settings.sizingCount));
   $('#key-numbers').replaceChildren(...KEY_NUMBERS.map((line) => h('li', {}, line)));
   initSizing({
     getAttempts: () => state.attempts,
@@ -260,8 +267,16 @@ function renderHome() {
   $('#home-choose').hidden = track !== null;
   $('#home-math').hidden = track !== 'math';
   $('#home-sizing').hidden = track !== 'sizing';
+  const sprint = s.sizingType === 'sprint';
+  markChoice('#sizing-type-seg', s.sizingType);
   markChoice('#sizing-count-seg', s.sizingCount);
-  $('#sizing-help').textContent = `${s.sizingCount} cases, about ${s.sizingCount * 3}–${s.sizingCount * 5} minutes.`;
+  $('#sizing-type-help').textContent = sprint
+    ? 'About a minute each: build the tree or pick the right approach. No numbers.'
+    : 'Clarify, choose the angle, build the tree, tap ranges, calculate, sense-check. Scored mainly on structure.';
+  $('#sz-count-label').textContent = sprint ? 'Rounds' : 'Cases';
+  $('#sizing-help').textContent = sprint
+    ? `${s.sizingCount} rounds, about ${s.sizingCount} minute${s.sizingCount === 1 ? '' : 's'}.`
+    : `${s.sizingCount} cases, about ${s.sizingCount * 4}–${s.sizingCount * 6} minutes.`;
 
   const st = stats.streaks(mathAttempts());
   $('#home-streak-count').textContent = st.current;
@@ -758,21 +773,25 @@ function mmss(ms) {
 function sizingCard(list) {
   const weekStart = stats.startOfWeek(Date.now());
   const week = list.filter((a) => a.ts >= weekStart);
-  const ok = list.filter((a) => a.correct).length;
-  const factsRight = list.reduce((n, a) => n + (a.factsRight || 0), 0);
-  const factsTotal = list.reduce((n, a) => n + (a.factsTotal || 0), 0);
-  const avg = list.reduce((n, a) => n + a.timeMs, 0) / list.length;
+  const cases = list.filter((a) => a.sizingType !== 'sprint');
+  const sprints = list.filter((a) => a.sizingType === 'sprint');
+  const scored = cases.filter((a) => a.scoreMax);
+  // trees built in full cases plus every sprint round
+  const structure = [...scored.map((a) => a.treeOk), ...sprints.map((a) => a.correct)];
+  const ballpark = cases.filter((a) => a.given > 0 && a.answer > 0);
+  const within = ballpark.filter((a) => ratioOff(a.given, a.answer) <= BALLPARK).length;
+  const pct = (k, of) => (of ? `${Math.round((k / of) * 100)}%` : '–');
   return h(
     'div',
     { class: 'card' },
     h('h2', {}, 'Market sizing'),
-    h('p', { class: 'muted small' }, `${week.length} case${week.length === 1 ? '' : 's'} this week · ${list.length} in total · ${mmss(avg)} per case`),
+    h('p', { class: 'muted small' }, `${week.length} this week · ${cases.length} case${cases.length === 1 ? '' : 's'} · ${sprints.length} sprint round${sprints.length === 1 ? '' : 's'}`),
     h(
       'div',
       { class: 'tiles' },
-      tile(`${Math.round((ok / list.length) * 100)}%`, 'within ±20%'),
-      tile(factsTotal ? `${Math.round((factsRight / factsTotal) * 100)}%` : '–', 'facts right'),
-      tile(String(list.length), 'cases')
+      tile(scored.length ? `${(scored.reduce((x, a) => x + a.score, 0) / scored.length).toFixed(1)}/5` : '–', 'avg case score'),
+      tile(pct(structure.filter(Boolean).length, structure.length), 'structure right'),
+      tile(pct(within, ballpark.length), `within ${BALLPARK}×`)
     ),
     h('button', { type: 'button', class: 'btn primary', onclick: () => { state.homeTrack = 'sizing'; showView('home'); } }, 'Practise market sizing')
   );
@@ -789,27 +808,41 @@ function finishSizing(done) {
 
 function renderSizingSummary(done) {
   const n = done.results.length;
-  const ok = done.results.filter((r) => r.attempt.correct).length;
-  const fr = done.results.reduce((x, r) => x + r.attempt.factsRight, 0);
-  const ft = done.results.reduce((x, r) => x + r.attempt.factsTotal, 0);
+  const sprint = done.type === 'sprint';
   const avg = done.results.reduce((x, r) => x + r.attempt.timeMs, 0) / n;
-  $('#summary-title').textContent = ok / n >= 0.6 ? 'Good estimating' : 'Session done';
-  $('#summary-sub').textContent = `Market sizing · ${n} case${n === 1 ? '' : 's'}`;
-  $('#summary-tiles').replaceChildren(tile(`${ok}/${n}`, 'within ±20%'), tile(`${fr}/${ft}`, 'facts right'), tile(mmss(avg), 'avg per case'));
+  const count = (list, f) => `${list.filter(f).length}/${list.length}`;
+  $('#summary-sub').textContent = `${sprint ? 'Structure sprint' : 'Market sizing'} · ${n} ${sprint ? 'round' : 'case'}${n === 1 ? '' : 's'}`;
+  if (sprint) {
+    const ok = done.results.filter((r) => r.attempt.correct).length;
+    const trees = done.results.filter((r) => r.attempt.round === 'tree');
+    const picks = done.results.filter((r) => r.attempt.round === 'pick');
+    $('#summary-title').textContent = ok / n >= 0.7 ? 'Sharp structuring' : 'Session done';
+    $('#summary-tiles').replaceChildren(tile(`${ok}/${n}`, 'right'), tile(count(trees, (r) => r.attempt.correct), 'trees built'), tile(count(picks, (r) => r.attempt.correct), 'approaches picked'));
+  } else {
+    const score = done.results.reduce((x, r) => x + r.attempt.score, 0) / n;
+    $('#summary-title').textContent = score >= 4 ? 'Strong cases' : 'Session done';
+    $('#summary-tiles').replaceChildren(tile(`${score.toFixed(1)}/5`, 'avg score'), tile(count(done.results, (r) => r.attempt.treeOk), 'trees right'), tile(mmss(avg), 'avg per case'));
+  }
   $('#summary-modes').replaceChildren();
-  $('#summary-miss-label').textContent = 'Cases';
+  $('#summary-miss-label').textContent = sprint ? 'Rounds' : 'Cases';
   $('#summary-misses').replaceChildren(
-    ...done.results.map(({ attempt, c, yours }) =>
+    ...done.results.map(({ attempt, c }) =>
       h(
         'li',
         {},
         h('div', { class: 'miss-q' }, c.question),
-        h('div', { class: 'miss-a' }, `${attempt.correct ? '✓' : '✗'} You ${fmtStage(c.finalStep, yours, c.region.cur)} · Me ${fmtStage(c.finalStep, c.answer, c.region.cur)}`),
-        h('div', { class: 'miss-x' }, 'Path: ' + c.steps.map((st) => fmtStage(st, c.ref[st.key], c.region.cur)).join(' → '))
+        h(
+          'div',
+          { class: 'miss-a' },
+          sprint
+            ? `${attempt.correct ? '✓' : '✗'} ${attempt.round === 'tree' ? 'Built the tree' : 'Picked the approach'}`
+            : `${attempt.score}/5 · You ${fmtAnswer(c, attempt.given)} · Me ${fmtAnswer(c, c.answer)}`
+        ),
+        h('div', { class: 'miss-x' }, `Tree: ${treeText(c.tree)}`)
       )
     )
   );
-  $('#again-btn').onclick = () => startSizing(done.target);
+  $('#again-btn').onclick = () => startSizing(done.type, done.target);
   $('#review-these-btn').hidden = true;
 }
 
@@ -1104,7 +1137,18 @@ function sanitizeAttempt(a) {
   const str = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '');
   const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
   if (num(a.ts) == null || !(MODES[a.mode] || a.mode === 'sizing') || ![1, 2, 3].includes(a.difficulty)) return null;
-  const extra = a.mode === 'sizing' ? { factsRight: Math.max(0, num(a.factsRight) ?? 0), factsTotal: Math.max(0, num(a.factsTotal) ?? 0) } : {};
+  const count = (v) => Math.max(0, num(v) ?? 0);
+  const extra =
+    a.mode === 'sizing'
+      ? {
+          sizingType: a.sizingType === 'sprint' ? 'sprint' : 'case',
+          factsRight: count(a.factsRight),
+          factsTotal: count(a.factsTotal),
+          ...(a.sizingType === 'sprint' ? { round: a.round === 'pick' ? 'pick' : 'tree' } : {}),
+          // scored cases (v1.4+); older cases only have their final answer
+          ...(num(a.scoreMax) ? { score: Math.min(count(a.score), num(a.scoreMax)), scoreMax: num(a.scoreMax), treeOk: a.treeOk === true } : {}),
+        }
+      : {};
   return {
     ...extra,
     ts: a.ts,

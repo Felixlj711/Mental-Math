@@ -7,7 +7,7 @@ import { ProblemEngine, SEEN_WINDOW } from '../js/engine.js';
 import { createRng } from '../js/rng.js';
 import { parseAnswer, checkAnswer, displayAnswer, fmtNum } from '../js/format.js';
 import { streaks, weekComparison, mistakeTypes, goalProgress, startOfWeek, addDays } from '../js/stats.js';
-import { SIZING_COMBOS, SIZING_TEMPLATES, SizingPicker, makeCase, evaluate, fmtStage, COUNTRIES, CITIES } from '../js/sizing.js';
+import { SIZING_COMBOS, SIZING_TEMPLATES, SizingPicker, makeCase, chainValue, chainText, treeText, gradeTree, approaches, bandLabel, fmtAnswer, ratioOff, COUNTRIES, CITIES } from '../js/sizing.js';
 
 let failures = 0;
 let checks = 0;
@@ -212,36 +212,80 @@ if (failures) {
 console.log('6. Market sizing cases');
 {
   const regions = new Map([...COUNTRIES, ...CITIES].map((r) => [r.id, r]));
+  const rng = createRng(11);
+  const verdicts = new Set();
   for (const combo of SIZING_COMBOS) {
-    const c = makeCase(combo);
+    const c = makeCase(combo, rng);
     const where = combo.fingerprint;
+    const cur = c.region.cur;
     assert(Number.isFinite(c.answer) && c.answer > 0, `${where}: bad answer ${c.answer}`);
-    assert(c.steps.length >= 2 && c.finalStep.kind === 'calc', `${where}: last stage must be a calculation`);
     assert(c.clarify.questions.length >= 2 && c.clarify.answer, `${where}: clarify content missing`);
-    assert(c.facts.length >= 1, `${where}: no key facts`);
+    assert(c.facts.length >= 1 && c.archetype, `${where}: no key facts or archetype`);
+    // angles: exactly one is mine, and it is a valid one
+    const mine = c.angles.filter((x) => x.mine);
+    assert(c.angles.length >= 2 && mine.length === 1 && mine[0].ok, `${where}: needs exactly one valid angle of mine`);
+    assert(c.angles.every((x) => x.label && x.why), `${where}: angle text missing`);
+    // tree: unique keys, joined by × or ÷, every driver explained
     const keys = new Set();
-    for (const st of c.steps) {
-      assert(!keys.has(st.key), `${where}: duplicate stage key ${st.key}`);
-      keys.add(st.key);
-      assert(st.ask && st.plan, `${where}: stage ${st.key} missing text`);
-      if (st.kind !== 'calc') assert(st.note && Number.isFinite(st.value) && st.value > 0, `${where}: stage ${st.key} needs a value and note`);
-      if (st.kind === 'calc') assert(!/undefined|NaN/.test(st.formula(c.ref)), `${where}: bad formula text for ${st.key}`);
-      assert(fmtStage(st, c.ref[st.key], c.region.cur) !== '–', `${where}: stage ${st.key} has no reference value`);
+    c.tree.forEach((d, i) => {
+      assert(!keys.has(d.key), `${where}: duplicate block key ${d.key}`);
+      keys.add(d.key);
+      assert(i === 0 ? d.op === '' : ['×', '÷'].includes(d.op), `${where}: bad op on ${d.key}`);
+      assert(d.block && d.note && Number.isFinite(d.value) && d.value > 0, `${where}: driver ${d.key} needs text and a value`);
+      if (d.kind !== 'const') {
+        assert(d.ask, `${where}: driver ${d.key} needs a question`);
+        // ranges: four of them, at least one holding my number, no gaps in the labels
+        const bands = c.bands[d.key];
+        assert(bands.length === 4 && bands.some((b) => b.mine), `${where}: ${d.key} ranges must hold my number`);
+        assert(bands.every((b, j) => b.lo <= b.hi && b.use > 0 && (j === 0 || bands[j - 1].hi <= b.lo)), `${where}: ${d.key} ranges out of order`);
+        assert(bands.every((b) => b.use >= b.lo && b.use <= b.hi), `${where}: ${d.key} value used must sit in its range`);
+        assert(!/undefined|NaN/.test(bands.map((b) => bandLabel(d, b, cur)).join()), `${where}: ${d.key} bad range label`);
+      }
+    });
+    // extras: none collide with the tree, at least one double-count trap, 6+ blocks to choose from
+    for (const x of c.extras) {
+      assert(!keys.has(x.key), `${where}: extra ${x.key} collides with the tree`);
+      assert(['off', 'trap', 'unit'].includes(x.kind) && x.block && x.why, `${where}: extra ${x.key} incomplete`);
+      keys.add(x.key);
     }
+    assert(c.extras.some((x) => x.kind === 'trap'), `${where}: needs a double-count trap`);
+    assert(c.blocks.length >= 6 && c.blocks.length <= 11, `${where}: ${c.blocks.length} blocks`);
+    // text renders
+    const text = [c.question, treeText(c.tree), chainText(c.tree, c.ref, cur), fmtAnswer(c, c.answer), c.per(c.answer), c.unit].join(' ');
+    assert(!/undefined|NaN|Infinity/.test(text), `${where}: broken text: ${text}`);
     // facts match the region's known figures
     const R = regions.get(c.region.id);
-    for (const st of c.steps.filter((x) => x.kind === 'fact')) {
-      if (st.key === 'pop') assert(st.value === R.pop, `${where}: population fact mismatch`);
-      if (st.key === 'hh' && !R.city) assert(st.value === R.hh, `${where}: household fact mismatch`);
+    const pop = c.tree.find((d) => d.key === 'pop');
+    if (pop) assert(pop.value === R.pop, `${where}: population fact mismatch`);
+    const hh = c.tree.find((d) => d.key === 'hh');
+    if (hh) assert(hh.value === R.hh, `${where}: household fact mismatch`);
+    // grading: my tree is right in any order; an extra or a missing driver isn't
+    assert(gradeTree(c, c.tree).ok && gradeTree(c, c.tree).inOrder, `${where}: my own tree must pass`);
+    assert(gradeTree(c, [...c.tree].reverse()).ok, `${where}: order must not fail the tree`);
+    assert(!gradeTree(c, [...c.tree, c.extras[0]]).ok && !gradeTree(c, c.tree.slice(1)).ok, `${where}: wrong trees must fail`);
+    // approaches: four distinct options, exactly one right
+    const opts = approaches(c, rng);
+    assert(opts.length === 4 && opts.filter((o) => o.ok).length === 1, `${where}: approaches need 4 options, one right`);
+    assert(new Set(opts.map((o) => treeText(o.blocks))).size === 4, `${where}: approaches must differ`);
+    // the colleague's sense-check answer sits where its verdict says
+    const r = c.colleague.value / c.answer;
+    const { verdict } = c.colleague;
+    verdicts.add(verdict);
+    assert(verdict === 'ok' ? ratioOff(c.colleague.value, c.answer) < 1.5 : verdict === 'high' ? r > 5 : r < 0.2, `${where}: colleague ${verdict} at ${r}×`);
+    // ranges: picking mine everywhere reproduces my answer; any other pick still lands in a sane place
+    const mineVals = {};
+    const lowVals = {};
+    for (const d of c.tree) {
+      mineVals[d.key] = d.kind === 'const' ? d.value : c.bands[d.key].find((b) => b.mine).use;
+      lowVals[d.key] = d.kind === 'const' ? d.value : c.bands[d.key][0].use;
     }
-    assert(!/undefined|NaN|Infinity/.test(c.sense(c.ref) + c.question), `${where}: broken text`);
-    // different assumptions flow through the chain
-    const inputs = {};
-    const firstAssumption = c.steps.find((x) => x.kind === 'assume');
-    for (const st of c.steps) if (st.kind !== 'calc') inputs[st.key] = st.value * (st === firstAssumption ? 1.5 : 1);
-    const v = evaluate(c.steps, inputs);
-    assert(Number.isFinite(v[c.finalStep.key]) && Math.abs(v[c.finalStep.key] / c.answer - 1) > 0.01, `${where}: your assumptions must flow through to the answer`);
+    assert(Math.abs(chainValue(c.tree, mineVals) / c.answer - 1) < 1e-9, `${where}: my ranges must give my answer`);
+    assert(Number.isFinite(chainValue(c.tree, lowVals)) && chainValue(c.tree, lowVals) > 0, `${where}: low ranges break the maths`);
   }
+  assert(verdicts.size === 3, 'colleague answers should be plausible, too high and too low');
+  const archetypes = new Set(SIZING_TEMPLATES.map((t) => t.archetype));
+  assert(archetypes.size >= 12, `only ${archetypes.size} different archetypes`);
+  console.log(`   ${archetypes.size} archetypes`);
   // picker: every case once before any repeat, never the same case type twice in a row
   const picker = new SizingPicker({ rng: createRng(3) });
   const seenFp = new Set();

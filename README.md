@@ -3,16 +3,20 @@
 A mental-math trainer for consulting interviews. It installs on your phone like an app, works fully offline, and keeps your history on your phone.
 
 - **Two tracks**: the Practice tab first asks whether you want **Mental math** or **Market sizing**. **‹ Back** (or Android's back gesture) returns to that choice.
-- **Market sizing**: guided cases for the UK and Europe (18 case types across 6 countries and 7 cities), run like an interview:
-  1. **Clarify**: think of your questions, then reveal mine and the interviewer's answer.
-  2. **Plan**: think through your structure, then reveal the approach.
-  3. **Estimate stage by stage**:
-     - **facts** (population, households) count if within ±20%;
-     - **assumptions** are never wrong: you see "I'd have gone with…" and why;
-     - **calculations** are checked against *your own* numbers.
-  4. **Sense check**, then your final answer against mine (±20%), with a side-by-side table of every step.
+- **Market sizing**: structure-first cases for the UK and Europe (25 case types across 6 countries and 7 cities). There are two formats:
+  - **Full case**, run like an interview and scored out of 5, mainly on structure and judgement:
+    1. **Clarify**: think of your questions, then reveal mine and the interviewer's answer.
+    2. **Choose the angle**: demand side, supply side or a proxy. Often more than one works; you see why each does or doesn't. *(1 point)*
+    3. **Build the tree**: tap the drivers you need, in order, from 6–10 blocks. Some don't belong, some double count (e.g. population *and* households) and some use the wrong time unit. You then see what you missed, why each wrong block is wrong, and my tree. *(1 point)*
+    4. **Your numbers**: tap a range for each driver (e.g. `<10% · 10–30% · 30–60% · >60%`) instead of typing a number. Facts should hold my number; assumptions are never wrong, you just see where mine sits.
+    5. **Calculate**: one typed answer from your own numbers, checked within ±10%. *(1 point)*
+    6. **Sense check**: a colleague gives an answer that is either plausible or about 10× too high or too low. Judge it, then see a per-person comparison. *(1 point)*
+    7. **Result**: your final answer only needs to be within 3× of mine *(1 point)*, with a side-by-side table of every driver.
+  - **Structure sprint**: one-minute rounds with no numbers. Rounds alternate between **Build the tree** and **Pick the approach**, where one of four trees is right and the others double count, mix up units, or miss or add a driver.
 
-  **Key facts** are hidden behind a tap, and a **Numbers worth knowing** sheet is on the setup screen. Sizing results have their own card on the Progress screen and don't count toward the maths streak or weekly goal.
+  The cases cover many shapes, not just people × usage: demand ÷ capacity (dentists), stock vs flow (new cars), supply capacity (airport flights), one business's revenue (a café's takings), B2B demand (office chairs), time spent (hours of online video), a value chain (profit on a cinema ticket) and a client-style new-market case (e-scooters).
+
+  **Key facts** are hidden behind a tap, and a **Numbers worth knowing** sheet is on the setup screen. Sizing results have their own card on the Progress screen (average case score, % of trees right, % within 3×) and don't count toward the maths streak or weekly goal.
 - **4 drill modes + Mixed**: multiplication, percentages, growth rates, large-number division. Each has 3 difficulty levels.
 - **Never repeats**: every problem is generated from random numbers (no question bank). Anything you've seen in your last 10,000 problems is blocked. The same problem type never comes twice in a row, and the wording and business stories rotate.
 - **Realistic numbers**: business-style figures (€2.4M, 36B, 1,250 stores) and consulting stories in € and £. Each story only appears when its numbers make sense.
@@ -34,8 +38,8 @@ A mental-math trainer for consulting interviews. It installs on your phone like 
 | `js/engine.js` | Picks the next problem, blocks repeats, rotates wording |
 | `js/format.js` | Formats numbers (2.4M), reads your answers, checks tolerance |
 | `js/stats.js` | Streaks, weekly comparisons, weakest mode, mistakes |
-| `js/sizing.js` | Market sizing cases: regions, key numbers, stages, reference estimates |
-| `js/sizing-ui.js` | The guided market sizing screen |
+| `js/sizing.js` | Market sizing cases: regions, key numbers, angles, driver trees with distractors, answer ranges, sense checks |
+| `js/sizing-ui.js` | The market sizing screen: full case and structure sprint |
 | `js/dom.js` | Small shared helpers (building page elements, the keypad input rules) |
 | `js/db.js` | Saves your history on the phone (IndexedDB) |
 | `js/chart.js` | The small charts on the Progress screen |

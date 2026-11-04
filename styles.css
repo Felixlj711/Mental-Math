@@ -451,11 +451,6 @@ h2 {
   color: var(--text-2);
 }
 
-.sz-intro {
-  margin: 0;
-  font-size: 0.92rem;
-}
-
 .facts-sheet {
   margin-top: 16px;
 }
@@ -714,6 +709,224 @@ body[data-view='sizing'] .app {
 
 .drill-actions.single {
   grid-template-columns: 1fr;
+}
+
+/* answer buttons: angles, ranges, sense check, approaches */
+.sz-choices {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 4px;
+}
+
+.sz-choices.grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.sz-choices.row {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.sz-choice {
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sz-choices.grid .sz-choice,
+.sz-choices.row .sz-choice {
+  text-align: center;
+}
+
+.sz-choice:active:not(:disabled) {
+  background: var(--accent-soft);
+}
+
+.sz-choice:disabled {
+  cursor: default;
+  color: var(--text-2);
+}
+
+.sz-choice.picked {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  color: var(--text);
+}
+
+.sz-choice.good {
+  background: var(--good-soft);
+  border-color: var(--good);
+  color: var(--good);
+}
+
+.sz-choice.bad {
+  background: var(--bad-soft);
+  border-color: var(--bad);
+  color: var(--bad);
+}
+
+.sz-choice.off {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* tree builder */
+.sz-label {
+  margin: 12px 0 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-2);
+}
+
+.sz-tree,
+.sz-pool {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sz-tree {
+  min-height: 52px;
+  align-items: center;
+  padding: 8px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+}
+
+.sz-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sz-chip.in {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.sz-chip.used {
+  opacity: 0.4;
+}
+
+.sz-chip:disabled {
+  cursor: default;
+}
+
+.sz-chip.good {
+  opacity: 1;
+  background: var(--good-soft);
+  border-color: var(--good);
+  color: var(--good);
+}
+
+.sz-chip.bad {
+  opacity: 1;
+  background: var(--bad-soft);
+  border-color: var(--bad);
+  color: var(--bad);
+}
+
+.sz-chip.missed {
+  border-style: dashed;
+  border-color: var(--good);
+  color: var(--good);
+}
+
+.sz-chip.idle {
+  opacity: 0.45;
+}
+
+.sz-step {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.sz-card .sz-result {
+  margin-top: 12px;
+}
+
+.sz-formula {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.sz-why {
+  margin: 10px 0 4px;
+  padding-left: 18px;
+  font-size: 0.92rem;
+}
+
+.sz-why li + li {
+  margin-top: 6px;
+}
+
+.sz-why li.good strong {
+  color: var(--good);
+}
+
+.sz-why li.bad strong {
+  color: var(--bad);
+}
+
+.sz-more {
+  margin-top: 8px;
+}
+
+.sz-more summary {
+  cursor: pointer;
+  font-weight: 600;
+  min-height: 28px;
+}
+
+.sz-checklist {
+  list-style: none;
+  margin: 10px 0 4px;
+  padding: 0;
+}
+
+.sz-checklist li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.sz-checklist li.good .sz-badge {
+  background: var(--good-soft);
+  color: var(--good);
+}
+
+.sz-checklist li.bad .sz-badge {
+  background: var(--bad-soft);
+  color: var(--bad);
 }
 
 /* ---------- Drill screen ---------- */

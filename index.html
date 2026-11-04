@@ -55,7 +55,7 @@
         </button>
         <button type="button" class="track-card" data-track="sizing">
           <span class="track-icon" aria-hidden="true">≈</span>
-          <span class="track-body"><strong>Market sizing</strong><small>Guided estimates for the UK and Europe</small></span>
+          <span class="track-body"><strong>Market sizing</strong><small>Structure-first cases for the UK and Europe</small></span>
           <span class="track-chev" aria-hidden="true">›</span>
         </button>
       </div>
@@ -98,7 +98,12 @@
 
       <!-- market sizing setup -->
       <div id="home-sizing" hidden>
-        <p class="muted sz-intro">Work through a case like in an interview: clarify, plan, estimate each stage, then sense-check. Facts and your final answer count if within ±20%.</p>
+        <h2 class="section-label" id="sz-type-label">Format</h2>
+        <div class="segmented" id="sizing-type-seg" role="radiogroup" aria-labelledby="sz-type-label">
+          <button type="button" role="radio" data-value="case">Full case</button>
+          <button type="button" role="radio" data-value="sprint">Structure sprint</button>
+        </div>
+        <p class="setting-help" id="sizing-type-help"></p>
         <h2 class="section-label" id="sz-count-label">Cases</h2>
         <div class="segmented" id="sizing-count-seg" role="radiogroup" aria-labelledby="sz-count-label">
           <button type="button" role="radio" data-value="3">3</button>
