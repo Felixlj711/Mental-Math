@@ -85,8 +85,12 @@ const pct = (x) => (x == null ? '–' : `${Math.round(x * 100)}%`);
 // ---------- start-up ----------
 async function init() {
   bindStatic();
+  let seenVersion = null;
+  let returning = false;
   try {
     const saved = await db.getKV('settings');
+    seenVersion = (await db.getKV('appVersion')) ?? null;
+    returning = saved != null;
     state.settings = { ...DEFAULTS, ...sanitizeSettings(saved) };
     state.attempts = await db.allAttempts();
     state.rotation = (await db.getKV('rotation')) || null;
@@ -99,6 +103,7 @@ async function init() {
   rebuildEngine();
   history.replaceState({ view: 'home' }, '');
   showView('home', { push: false });
+  announceVersion(seenVersion, returning || state.attempts.length > 0);
   registerServiceWorker();
   requestPersistentStorage();
 }
@@ -109,6 +114,17 @@ function rebuildEngine() {
     rotation: state.rotation,
     context: state.settings.context,
   });
+}
+
+// Shows the version on the Practice screen and flags it once when an update
+// has just loaded. Versions before 1.4.0 didn't record themselves, so a
+// returning user with no recorded version counts as just updated too.
+function announceVersion(seen, returning) {
+  const fresh = seen !== APP_VERSION && (seen != null || returning);
+  $('#home-version').textContent = fresh ? `v${APP_VERSION} · just updated` : `v${APP_VERSION}`;
+  $('#home-version').classList.toggle('fresh', fresh);
+  if (fresh) toast(`Updated to v${APP_VERSION} ✓`);
+  if (state.storageOk && seen !== APP_VERSION) db.setKV('appVersion', APP_VERSION).catch(() => {});
 }
 
 function saveSettings() {

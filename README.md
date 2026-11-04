@@ -144,6 +144,7 @@ The app also asks Chrome to mark its storage as "persistent", so Chrome won't de
 2. **Important:** open `sw.js` and bump the version, e.g. `const VERSION = 'v1.0.1';`. That's how phones notice there's an update.
 3. Upload the changed files to GitHub: repository → **Add file → Upload files** → **Commit changes**.
 4. The next time you open the app while online, a banner says **"A new version is ready"**. Tap **Update**. Your history is kept.
+5. The app reloads and shows **"Updated to v…"**. Until you next close it, the version under the Practice choices shows in green with **"just updated"**. That version number always matches `APP_VERSION` in `js/app.js`, so you can check which version your phone is running.
 
 ---
 
